@@ -14,8 +14,8 @@ interface QuinielaDashboardProps {
 }
 
 export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
-  bankDetails,
-  prices,
+  bankDetails: _bankDetails,
+  prices: _prices,
   registrations,
   matches,
   fetchData,
@@ -120,7 +120,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
     loadPredictions();
   }, [loggedInUser, selectedJornada]);
 
-  const quinielaPrice = prices?.jornada_quiniela || 100;
+  const quinielaPrice = 50; // New flat price: 50 MXN (or 3 USD)
   
   // Deadline check:
   // - Límite de edición: Hora de inicio del primer partido de la jornada seleccionada
@@ -131,8 +131,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
   const isAfterDeadline = deadline ? (new Date() > deadline) : false;
 
-
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setReceiptFile(e.target.files[0]);
@@ -141,8 +139,8 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nickname || !email) {
-      setMessage({ type: 'error', text: 'Por favor, ingresa tu Nickname y tu Correo Electrónico.' });
+    if (!nickname) {
+      setMessage({ type: 'error', text: 'Por favor, ingresa tu Nickname.' });
       return;
     }
 
@@ -153,13 +151,12 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         .from('participants')
         .select('*')
         .ilike('nickname', nickname.trim())
-        .ilike('email', email.trim())
         .maybeSingle();
 
       if (error) throw error;
 
       if (!participant) {
-        throw new Error('No se encontró ningún participante con ese Nickname y Correo Electrónico.');
+        throw new Error('No se encontró ningún participante con ese Nickname. Regístrate si aún no tienes una cuenta.');
       }
 
       setLoggedInUser(participant);
@@ -174,19 +171,22 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !nickname || !email || !phone) {
-      setMessage({ type: 'error', text: 'Por favor, rellena todos los campos requeridos.' });
+    if (!name || !nickname) {
+      setMessage({ type: 'error', text: 'Por favor, rellena los campos requeridos (Nombre y Nickname).' });
       return;
     }
 
     setLoading(true);
     setMessage(null);
     try {
+      const trimmedName = name.trim();
+      const trimmedNickname = nickname.trim();
+
       // 1. Check if nickname is already taken
       const { data: existingNick, error: nickErr } = await supabase
         .from('participants')
         .select('id')
-        .ilike('nickname', nickname.trim())
+        .ilike('nickname', trimmedNickname)
         .maybeSingle();
 
       if (nickErr) throw nickErr;
@@ -194,20 +194,37 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         throw new Error('El nickname ingresado ya está en uso por otro participante.');
       }
 
-      // 2. Check if email is already taken
-      const { data: existingEmail, error: emailErr } = await supabase
+      // 2. Check if name is already taken
+      const { data: existingName, error: nameErr } = await supabase
         .from('participants')
         .select('id')
-        .ilike('email', email.trim())
+        .ilike('name', trimmedName)
         .maybeSingle();
 
-      if (emailErr) throw emailErr;
-      if (existingEmail) {
-        throw new Error('El correo electrónico ingresado ya está registrado.');
+      if (nameErr) throw nameErr;
+      if (existingName) {
+        // If name matches exactly, request last name (must contain a space)
+        if (!trimmedName.includes(' ')) {
+          throw new Error('El nombre ya está registrado. Por favor, ingresa tu nombre completo incluyendo tu apellido para poder registrarte.');
+        }
+      }
+
+      // 3. Check if email is already taken (only if provided)
+      if (email.trim()) {
+        const { data: existingEmail, error: emailErr } = await supabase
+          .from('participants')
+          .select('id')
+          .ilike('email', email.trim())
+          .maybeSingle();
+
+        if (emailErr) throw emailErr;
+        if (existingEmail) {
+          throw new Error('El correo electrónico ingresado ya está registrado por otro participante.');
+        }
       }
 
       let receiptUrl = null;
-      // 3. Upload payment receipt
+      // 4. Upload payment receipt (optional)
       if (receiptFile) {
         const fileExt = receiptFile.name.split('.').pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
@@ -226,15 +243,14 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         receiptUrl = urlData.publicUrl;
       }
 
-      // 4. Create participant in DB
-      // Note: payment_status defaults to 'pending'
+      // 5. Create participant in DB
       const { data: newPart, error: insertErr } = await supabase
         .from('participants')
         .insert([{
-          name: name.trim(),
-          nickname: nickname.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
+          name: trimmedName,
+          nickname: trimmedNickname,
+          email: email.trim() || null,
+          phone: phone.trim() || null,
           payment_status: 'pending',
           payment_receipt_url: receiptUrl
         }])
@@ -245,7 +261,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
       setLoggedInUser(newPart);
       localStorage.setItem('ligamx_user', JSON.stringify(newPart));
-      setMessage({ type: 'success', text: '¡Registro exitoso! Tu cuenta ha sido creada y tu pago de inscripción está pendiente de confirmación por el administrador.' });
+      setMessage({ type: 'success', text: '¡Registro exitoso! Tu cuenta ha sido creada. Puedes llenar tus pronósticos de inmediato.' });
       setIsRegistering(false);
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message });
@@ -776,7 +792,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                     🔑 Iniciar Sesión - Quiniela
                   </h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: 0, lineHeight: '1.4' }}>
-                    Ingresa tus credenciales para rellenar o modificar tus pronósticos de la Jornada {selectedJornada}.
+                    Ingresa tu Nickname para rellenar o modificar tus pronósticos de la Jornada {selectedJornada}.
                   </p>
 
                   <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -787,17 +803,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                         placeholder="Ej. pedrito99"
                         value={nickname}
                         onChange={(e) => setNickname(e.target.value)}
-                        required
-                        style={{ padding: '10px', fontSize: '14px' }}
-                      />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Correo Electrónico</label>
-                      <input 
-                        type="email" 
-                        placeholder="Ej. pedro@correo.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
                         required
                         style={{ padding: '10px', fontSize: '14px' }}
                       />
@@ -844,7 +849,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                     📝 Registro de Participante
                   </h3>
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: 0, lineHeight: '1.4' }}>
-                    Crea tu cuenta para poder jugar en la Quiniela de la Liga MX. El costo de inscripción es de <strong>${quinielaPrice} MXN</strong>.
+                    Regístrate para participar en la jornada actual de la Liga MX. Si llenas tu quiniela te comprometes a pagar.
                   </p>
 
                   <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
@@ -871,40 +876,48 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                       />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Correo Electrónico</label>
+                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Correo Electrónico (Opcional)</label>
                       <input 
                         type="email" 
                         placeholder="Ej. pedro@correo.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        required
                         style={{ padding: '10px', fontSize: '14px' }}
                       />
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Teléfono (WhatsApp)</label>
+                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Teléfono (WhatsApp - Opcional)</label>
                       <input 
                         type="tel" 
                         placeholder="Ej. 2221234567"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        required
                         style={{ padding: '10px', fontSize: '14px' }}
                       />
                     </div>
                     
                     {/* Bank Details */}
-                    {bankDetails && (
-                      <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: '8px', padding: '12px', fontSize: '13px' }}>
-                        <strong style={{ display: 'block', marginBottom: '6px', color: '#fff' }}>Datos para Transferencia:</strong>
-                        <div>Banco: <strong style={{ color: 'var(--text-muted)' }}>{bankDetails.banco}</strong></div>
-                        <div>CLABE: <strong style={{ color: '#fff' }}>{bankDetails.clabe}</strong></div>
-                        <div>Titular: <strong style={{ color: 'var(--text-muted)' }}>{bankDetails.titular}</strong></div>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-glass)', borderRadius: '8px', padding: '12px', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <strong style={{ display: 'block', color: '#fff' }}>Costo de Inscripción: $50 MXN (o $3 USD)</strong>
+                      
+                      <div style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                        <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '11px', display: 'block' }}>MÉXICO (Transferencia)</span>
+                        <div>Banco: <strong>NU MÉXICO</strong></div>
+                        <div>Cuenta: <strong>01011741555</strong></div>
+                        <div>CLABE: <strong>638180010117415556</strong></div>
+                        <div>Titular: <strong>MANUEL ALEJANDRO HERNÁNDEZ COMPEÁN</strong></div>
                       </div>
-                    )}
+
+                      <div>
+                        <span style={{ color: 'var(--accent)', fontWeight: '700', fontSize: '11px', display: 'block' }}>USA (Zelle)</span>
+                        <div>Zelle: <strong>3235575050</strong></div>
+                        <div>Titular: <strong>Fredy Reyes Sánchez</strong></div>
+                        <div>Monto: <strong>$3.00 USD</strong></div>
+                      </div>
+                    </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Comprobante de Transferencia (${quinielaPrice} MXN)</label>
+                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Comprobante de Transferencia (Opcional)</label>
                       <div style={{
                         border: '1px dashed var(--border-glass)',
                         borderRadius: '10px',
@@ -918,7 +931,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                           type="file"
                           accept="image/*,application/pdf"
                           onChange={handleFileChange}
-                          required
                           style={{
                             position: 'absolute',
                             top: 0,
@@ -931,7 +943,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                         />
                         <Upload size={20} style={{ color: 'var(--text-secondary)', margin: '0 auto 6px' }} />
                         <p style={{ fontSize: '13px', color: receiptFile ? 'var(--primary)' : 'var(--text-secondary)', margin: 0 }}>
-                          {receiptFile ? `✓ ${receiptFile.name}` : 'Selecciona el comprobante'}
+                          {receiptFile ? `✓ ${receiptFile.name}` : 'Selecciona el comprobante (Foto o PDF)'}
                         </p>
                       </div>
                     </div>
@@ -956,7 +968,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                       className="btn-primary"
                       style={{ padding: '12px', fontSize: '15px', fontWeight: '700' }}
                     >
-                      {loading ? 'Registrando...' : 'Registrarme y Enviar Comprobante'}
+                      {loading ? 'Registrando...' : 'Registrarme y Jugar'}
                     </button>
                   </form>
 
@@ -1367,45 +1379,84 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
       {/* VIEW: PAYMENT INFO TAB */}
       {activeTab === 'payment_info' && (
-        <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%' }}>
+        <div style={{ maxWidth: '600px', margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-panel-glow" style={{ padding: '30px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <h3 style={{ fontSize: '22px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-              💰 Datos de Depósito - Quiniela
+              💰 Cuentas de Pago - Quiniela
             </h3>
-            {bankDetails ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', fontSize: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Costo por Jornada:</span>
-                  <strong style={{ color: 'var(--primary)' }}>${quinielaPrice} MXN</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Banco:</span>
-                  <strong style={{ color: '#fff' }}>{bankDetails.banco}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Cuenta:</span>
-                  <strong style={{ color: '#fff', letterSpacing: '0.5px' }}>{bankDetails.cuenta}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>CLABE Interbancaria:</span>
-                  <strong style={{ color: '#fff', letterSpacing: '0.5px' }}>{bankDetails.clabe}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Titular:</span>
-                  <strong style={{ color: '#fff' }}>{bankDetails.titular}</strong>
-                </div>
-                <div style={{ background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.15)', padding: '15px', borderRadius: '10px', marginTop: '10px', fontSize: '14px', lineHeight: '1.5' }}>
-                  <p style={{ margin: 0, color: 'var(--primary)' }}>
-                    <strong>Instrucciones:</strong> Realiza tu transferencia por <strong>${quinielaPrice} MXN</strong> y guarda tu comprobante. Luego ve a la pestaña de <strong>Llenar Pronósticos</strong> para registrar tus predicciones y subir tu comprobante de pago.
-                  </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* México Account */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+                <span style={{ color: 'var(--primary)', fontWeight: '700', fontSize: '13px', display: 'block', marginBottom: '10px', textTransform: 'uppercase' }}>MÉXICO (Transferencia Bancaria)</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Monto por Jornada:</span>
+                    <strong style={{ color: '#fff' }}>$50.00 MXN</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Banco:</span>
+                    <strong style={{ color: '#fff' }}>NU MÉXICO</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Cuenta:</span>
+                    <strong style={{ color: '#fff', letterSpacing: '0.5px' }}>01011741555</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>CLABE Interbancaria:</span>
+                    <strong style={{ color: '#fff', letterSpacing: '0.5px' }}>638180010117415556</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Titular:</span>
+                    <strong style={{ color: '#fff' }}>MANUEL ALEJANDRO HERNÁNDEZ COMPEÁN</strong>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <p>Cargando datos de depósito...</p>
-            )}
+
+              {/* USA Account */}
+              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '10px', border: '1px solid var(--border-glass)' }}>
+                <span style={{ color: 'var(--accent)', fontWeight: '700', fontSize: '13px', display: 'block', marginBottom: '10px', textTransform: 'uppercase' }}>USA (Zelle)</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Monto por Jornada:</span>
+                    <strong style={{ color: '#fbbf24' }}>$3.00 USD</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Zelle:</span>
+                    <strong style={{ color: '#fff' }}>3235575050</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--text-secondary)' }}>Titular:</span>
+                    <strong style={{ color: '#fff' }}>Fredy Reyes Sánchez</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instructions and Rules */}
+              <div style={{ background: 'rgba(0, 102, 255, 0.08)', border: '1px solid rgba(0, 102, 255, 0.15)', padding: '16px', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6' }}>
+                <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '6px' }}>📝 Validación del Pago:</strong>
+                <p style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)' }}>
+                  De preferencia, sube tu comprobante de pago al guardar tus pronósticos. Si no puedes subirlo en ese momento, puedes enviarle un mensaje directamente a <strong>Manuel</strong> o <strong>Fredy</strong> para confirmar tu depósito.
+                </p>
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  <strong>Regla de Compromiso:</strong> Al llenar una quiniela te comprometes a pagar.
+                </p>
+              </div>
+
+              <div style={{ background: 'rgba(255, 59, 48, 0.08)', border: '1px solid rgba(255, 59, 48, 0.15)', padding: '16px', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6' }}>
+                <strong style={{ color: 'var(--secondary)', display: 'block', marginBottom: '6px' }}>⚠️ Regla de Pago Extemporáneo (Penalización):</strong>
+                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                  Cualquier pago recibido de forma extemporánea (después del silbatazo inicial del primer partido de la jornada) se considera un <strong>foul</strong>. Si resultas ganador en esa semana, serás penalizado con el <strong>50% del premio acumulado</strong> de esa semana. El 50% restante se dejará para la bolsa de la siguiente semana.
+                </p>
+              </div>
+
+            </div>
           </div>
         </div>
       )}
+
+
 
       {/* Success Modal */}
       {showSuccessModal && (

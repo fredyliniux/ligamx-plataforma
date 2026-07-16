@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS public.participants (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
     nickname TEXT NOT NULL UNIQUE,
-    email TEXT NOT NULL UNIQUE,
+    email TEXT, -- Opcional
     phone TEXT,
     payment_status TEXT DEFAULT 'pending', -- 'pending', 'confirmed'
     payment_receipt_url TEXT,
