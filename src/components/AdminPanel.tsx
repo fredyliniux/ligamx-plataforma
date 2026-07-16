@@ -1520,13 +1520,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </form>
           </div>
 
-          {/* Danger Zone: Reset System */}
+          {/* Danger Zone: Clear DB for Production */}
           <div className="glass-panel" style={{ padding: '24px', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.05)' }}>
             <h3 style={{ fontSize: '18px', borderBottom: '1px solid rgba(239, 68, 68, 0.2)', paddingBottom: '12px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
-              <ShieldAlert size={18} style={{ color: '#ef4444' }} /> Zona de Peligro: Reiniciar Sistema
+              <ShieldAlert size={18} style={{ color: '#ef4444' }} /> 🧹 Limpiar Base de Datos (Borrar Pruebas)
             </h3>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '16px', lineHeight: '1.6' }}>
-              Al hacer clic en el botón de abajo, se borrarán de forma definitiva todos los participantes, sus boletos, registros de quinielas, pronósticos, y se reiniciará el sorteo de la tómbola. Las configuraciones de precios y cuentas bancarias permanecerán intactas.
+              Utiliza este botón para **borrar permanentemente todos los participantes de prueba, quinielas registradas y pronósticos**, dejando la plataforma completamente limpia y lista para compartir con los usuarios reales de la Liga MX. Los partidos y configuraciones de pago permanecerán intactos.
             </p>
             <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', fontSize: '13px', color: '#fca5a5', marginBottom: '20px' }}>
               ⚠️ <strong>Advertencia:</strong> Esta acción no se puede deshacer. Se te solicitará escribir <strong>"REINICIAR"</strong> para confirmar la operación.
@@ -1553,7 +1553,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#dc2626'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ef4444'}
             >
-              <RotateCcw size={16} /> Reiniciar Todo el Sistema
+              <RotateCcw size={16} /> 🧹 Borrar Datos de Prueba y Empezar de Cero
             </button>
           </div>
 

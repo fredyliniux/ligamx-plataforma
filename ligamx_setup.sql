@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS public.matches (
     visitor_team TEXT NOT NULL,
     match_date TIMESTAMP WITH TIME ZONE NOT NULL,
     status TEXT DEFAULT 'pending', -- 'pending', 'finished'
-    local_score INTEGER,
-    visitor_score INTEGER,
+    score_local INTEGER,
+    score_visitor INTEGER,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

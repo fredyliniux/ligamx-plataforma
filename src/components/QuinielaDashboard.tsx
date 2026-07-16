@@ -1437,7 +1437,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
               <div style={{ background: 'rgba(0, 102, 255, 0.08)', border: '1px solid rgba(0, 102, 255, 0.15)', padding: '16px', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6' }}>
                 <strong style={{ color: 'var(--primary)', display: 'block', marginBottom: '6px' }}>📝 Validación del Pago:</strong>
                 <p style={{ margin: '0 0 10px 0', color: 'var(--text-secondary)' }}>
-                  De preferencia, sube tu comprobante de pago al guardar tus pronósticos. Si no puedes subirlo en ese momento, puedes enviarle un mensaje directamente a <strong>Manuel</strong> o <strong>Fredy</strong> para confirmar tu depósito.
+                  De preferencia, sube tu comprobante de pago al guardar tus pronósticos. Si no puedes subirlo en ese momento, puedes confirmarlo enviando un mensaje directamente a <strong>Manuel</strong> o <strong>Fredy</strong>. Se puede confirmar la participación por mensaje antes de realizar la transferencia física.
                 </p>
                 <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
                   <strong>Regla de Compromiso:</strong> Al llenar una quiniela te comprometes a pagar.
@@ -1447,7 +1447,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
               <div style={{ background: 'rgba(255, 59, 48, 0.08)', border: '1px solid rgba(255, 59, 48, 0.15)', padding: '16px', borderRadius: '10px', fontSize: '14px', lineHeight: '1.6' }}>
                 <strong style={{ color: 'var(--secondary)', display: 'block', marginBottom: '6px' }}>⚠️ Regla de Pago Extemporáneo (Penalización):</strong>
                 <p style={{ margin: 0, color: 'var(--text-secondary)' }}>
-                  Cualquier pago recibido de forma extemporánea (después del silbatazo inicial del primer partido de la jornada) se considera un <strong>foul</strong>. Si resultas ganador en esa semana, serás penalizado con el <strong>50% del premio acumulado</strong> de esa semana. El 50% restante se dejará para la bolsa de la siguiente semana.
+                  Cualquier pago recibido de forma extemporánea (después del silbatazo inicial del primer partido de la jornada) se considera un <strong>foul</strong>. Si resultas ganador en esa semana, serás penalizado con el <strong>50% del premio acumulado</strong> de esa semana. El 50% restante se dejará para la bolsa de la siguiente semana. <em>Nota: Se aceptan excepciones bajo situaciones extraordinarias que te impidan realizar la transferencia bancaria a tiempo, siempre y cuando notifiques y confirmes tu participación por mensaje con Manuel o Fredy antes del inicio del primer partido.</em>
                 </p>
               </div>
 
