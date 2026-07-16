@@ -50,6 +50,12 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   const [phone, setPhone] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   
+  // Custom Autocomplete / Select State for registered users
+  const [allParticipants, setAllParticipants] = useState<any[]>([]);
+  const [loadingAllParts, setLoadingAllParts] = useState(false);
+  const [loginSearch, setLoginSearch] = useState('');
+  const [selectedPartIdForLogin, setSelectedPartIdForLogin] = useState('');
+  
   // Interactive Forecasts state
   const [userPredictions, setUserPredictions] = useState<{ [matchId: number]: 'L' | 'E' | 'V' }>({});
   
@@ -75,6 +81,26 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
       }
     }
   }, []);
+
+  // Fetch all registered participants for the combobox selector
+  useEffect(() => {
+    const fetchAllParts = async () => {
+      setLoadingAllParts(true);
+      try {
+        const { data, error } = await supabase
+          .from('participants')
+          .select('id, name, nickname')
+          .order('name', { ascending: true });
+        if (error) throw error;
+        setAllParticipants(data || []);
+      } catch (err) {
+        console.error('Error fetching participants for dropdown:', err);
+      } finally {
+        setLoadingAllParts(false);
+      }
+    };
+    fetchAllParts();
+  }, [loggedInUser, isRegistering]);
 
   // Fetch/load user predictions for the selected jornada
   useEffect(() => {
@@ -780,7 +806,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
       )}
 
       {activeTab === 'play' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           
           {/* USER NOT LOGGED IN */}
           {!loggedInUser ? (
@@ -791,22 +817,106 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                   <h3 style={{ fontSize: '22px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', margin: 0, textAlign: 'center' }}>
                     🔑 Iniciar Sesión - Quiniela
                   </h3>
+                  
+                  {/* Segmented Toggles */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid var(--border-glass)', paddingBottom: '4px', gap: '5px' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsRegistering(false); setMessage(null); }}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: !isRegistering ? '2px solid var(--primary)' : '2px solid transparent',
+                        color: !isRegistering ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Usuario Registrado
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsRegistering(true); setMessage(null); }}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: isRegistering ? '2px solid var(--primary)' : '2px solid transparent',
+                        color: isRegistering ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Usuario Nuevo
+                    </button>
+                  </div>
+
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: 0, lineHeight: '1.4' }}>
-                    Ingresa tu Nickname para rellenar o modificar tus pronósticos de la Jornada {selectedJornada}.
+                    Busca tu nombre o elígelo de la lista para ingresar a tus pronósticos de la Jornada {selectedJornada}.
                   </p>
 
                   <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    {/* Search filter input */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Nickname (@TuNick)</label>
+                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>1. Buscar mi Nombre</label>
                       <input 
                         type="text" 
-                        placeholder="Ej. pedrito99"
-                        value={nickname}
-                        onChange={(e) => setNickname(e.target.value)}
-                        required
+                        placeholder="Escribe tu nombre para filtrar..."
+                        value={loginSearch}
+                        onChange={(e) => setLoginSearch(e.target.value)}
                         style={{ padding: '10px', fontSize: '14px' }}
                       />
                     </div>
+
+                    {/* Combobox select */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>2. Seleccionar mi Usuario</label>
+                      {loadingAllParts ? (
+                        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Cargando lista...</span>
+                      ) : (
+                        <select 
+                          value={selectedPartIdForLogin} 
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedPartIdForLogin(val);
+                            const part = allParticipants.find(p => p.id === val);
+                            if (part) {
+                              setNickname(part.nickname);
+                            } else {
+                              setNickname('');
+                            }
+                          }}
+                          required
+                          style={{ padding: '10px', fontSize: '14px', background: 'rgba(0, 0, 0, 0.4)', color: '#fff', border: '1px solid var(--border-glass)', borderRadius: '8px' }}
+                        >
+                          <option value="">-- Selecciona tu nombre --</option>
+                          {allParticipants
+                            .filter(p => 
+                              p.name.toLowerCase().includes(loginSearch.toLowerCase()) || 
+                              p.nickname.toLowerCase().includes(loginSearch.toLowerCase())
+                            )
+                            .map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} (@{p.nickname})
+                              </option>
+                            ))
+                          }
+                        </select>
+                      )}
+                    </div>
+
+                    {nickname && (
+                      <div style={{ background: 'rgba(0, 102, 255, 0.05)', border: '1px solid rgba(0, 102, 255, 0.15)', padding: '10px', borderRadius: '6px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                        Usuario seleccionado: <strong style={{ color: '#fff' }}>@{nickname}</strong>
+                      </div>
+                    )}
 
                     {message && (
                       <div style={{
@@ -824,23 +934,13 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
                     <button 
                       type="submit" 
-                      disabled={loading}
+                      disabled={loading || !nickname}
                       className="btn-primary"
-                      style={{ padding: '12px', fontSize: '15px', fontWeight: '700' }}
+                      style={{ padding: '12px', fontSize: '15px', fontWeight: '700', marginTop: '5px' }}
                     >
                       {loading ? 'Validando...' : 'Entrar a mi Cuenta'}
                     </button>
                   </form>
-
-                  <div style={{ display: 'flex', justifyContent: 'center', fontSize: '13px', marginTop: '10px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>¿No te has registrado?</span>
-                    <button 
-                      onClick={() => { setIsRegistering(true); setMessage(null); }} 
-                      style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '700', marginLeft: '6px', cursor: 'pointer' }}
-                    >
-                      Regístrate aquí
-                    </button>
-                  </div>
                 </div>
               ) : (
                 /* REGISTRATION FORM */
@@ -848,6 +948,47 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                   <h3 style={{ fontSize: '22px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '12px', margin: 0, textAlign: 'center' }}>
                     📝 Registro de Participante
                   </h3>
+
+                  {/* Segmented Toggles */}
+                  <div style={{ display: 'flex', borderBottom: '1px solid var(--border-glass)', paddingBottom: '4px', gap: '5px' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsRegistering(false); setMessage(null); }}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: !isRegistering ? '2px solid var(--primary)' : '2px solid transparent',
+                        color: !isRegistering ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Usuario Registrado
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { setIsRegistering(true); setMessage(null); }}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        background: 'none',
+                        border: 'none',
+                        borderBottom: isRegistering ? '2px solid var(--primary)' : '2px solid transparent',
+                        color: isRegistering ? '#fff' : 'var(--text-secondary)',
+                        fontWeight: '700',
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      Usuario Nuevo
+                    </button>
+                  </div>
+
                   <p style={{ fontSize: '13px', color: 'var(--text-secondary)', textAlign: 'center', margin: 0, lineHeight: '1.4' }}>
                     Regístrate para participar en la jornada actual de la Liga MX. Si llenas tu quiniela te comprometes a pagar.
                   </p>
@@ -971,16 +1112,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                       {loading ? 'Registrando...' : 'Registrarme y Jugar'}
                     </button>
                   </form>
-
-                  <div style={{ display: 'flex', justifyContent: 'center', fontSize: '13px', marginTop: '10px' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>¿Ya tienes cuenta?</span>
-                    <button 
-                      onClick={() => { setIsRegistering(false); setMessage(null); }} 
-                      style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '700', marginLeft: '6px', cursor: 'pointer' }}
-                    >
-                      Inicia sesión
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
