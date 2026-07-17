@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.matches (
     status TEXT DEFAULT 'pending', -- 'pending', 'finished'
     score_local INTEGER,
     score_visitor INTEGER,
+    result TEXT CHECK (result IN ('L', 'E', 'V')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
