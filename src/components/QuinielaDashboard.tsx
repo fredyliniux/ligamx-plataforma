@@ -68,7 +68,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   // Transparency State
   const [transparencyData, setTransparencyData] = useState<any[]>([]);
   const [loadingTransparency, setLoadingTransparency] = useState(false);
-  const [expandedRegId, setExpandedRegId] = useState<string | null>(null);
 
   // Auto-login from localStorage
   useEffect(() => {
@@ -396,7 +395,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
           jornada,
           payment_status,
           points,
-          quiniela_image_url,
           participants (id, name, phone, nickname),
           forecasts (
             id,
@@ -414,6 +412,80 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
     } finally {
       setLoadingTransparency(false);
     }
+  };
+
+  // Generate a clean PDF print-out of the user's forecast sheet
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor, permite las ventanas emergentes (popups) para poder descargar el PDF.');
+      return;
+    }
+
+    const sortedMatches = [...selectedJornadaMatches].sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
+    const matchRows = sortedMatches.map((match, idx) => {
+      const pred = userPredictions[match.id] || 'Sin selección';
+      let predText = 'Empate';
+      if (pred === 'L') predText = `Local (${match.local_team})`;
+      if (pred === 'V') predText = `Visitante (${match.visitor_team})`;
+
+      return `
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
+          <td style="padding: 10px; border: 1px solid #ddd;"><strong>${match.local_team}</strong> vs <strong>${match.visitor_team}</strong></td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: #0066ff;">[ ${pred} ] - ${predText}</td>
+        </tr>
+      `;
+    }).join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Quiniela Liga MX - Jornada ${selectedJornada}</title>
+          <style>
+            body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 30px; color: #222; line-height: 1.5; }
+            .header-table { width: 100%; border: none; margin-bottom: 20px; }
+            h2 { color: #0066ff; margin: 0 0 10px 0; border-bottom: 2px solid #0066ff; padding-bottom: 8px; font-size: 26px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            th { background-color: #f5f5f7; padding: 12px 10px; border: 1px solid #ddd; text-align: left; font-size: 14px; }
+            td { padding: 12px 10px; border: 1px solid #ddd; font-size: 14px; }
+            .info-box { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; borderRadius: 8px; margin-bottom: 20px; }
+            .footer { text-align: center; font-size: 11px; color: #888; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
+          </style>
+        </head>
+        <body>
+          <h2>🏆 Comprobante de Pronósticos - Liga MX</h2>
+          <div class="info-box">
+            <strong>Participante:</strong> ${loggedInUser?.name || 'Usuario'} (@${loggedInUser?.nickname || 'nickname'})<br>
+            <strong>Jornada Seleccionada:</strong> Jornada ${selectedJornada}<br>
+            <strong>Fecha de Registro:</strong> ${new Date().toLocaleString('es-MX')}<br>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 50px; text-align: center;">N°</th>
+                <th>Encuentro</th>
+                <th style="width: 250px; text-align: center;">Tu Pronóstico</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${matchRows}
+            </tbody>
+          </table>
+          <div class="footer">
+            Generado automáticamente por la Plataforma Quiniela Liga MX.<br>
+            <strong>Regla:</strong> Al registrar tu quiniela te comprometes a realizar el pago correspondiente ($50 MXN / $3 USD).
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            };
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   useEffect(() => {
@@ -1319,6 +1391,28 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                   }
                 </button>
 
+                {/* Print/Save PDF Button */}
+                {Object.keys(userPredictions).length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handlePrint}
+                    className="btn-secondary"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      marginTop: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    🖨️ Descargar PDF / Imprimir Pronósticos
+                  </button>
+                )}
+
               </div>
 
             </div>
@@ -1366,141 +1460,117 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
           ) : (
             <div>
               {loadingTransparency ? (
-                <p style={{ textAlign: 'center', padding: '20px 0' }}>Cargando quinielas de participantes...</p>
+                <p style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-secondary)' }}>Cargando quinielas de participantes...</p>
               ) : transparencyData.length > 0 ? (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '14px' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}>
-                        <th style={{ padding: '12px 8px', minWidth: '150px' }}>Participante</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'center' }}>Pronósticos</th>
-                        <th style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)' }}>Puntos</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {transparencyData.map((reg) => (
-                        <React.Fragment key={reg.id}>
-                          <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                            <td style={{ padding: '14px 8px' }}>
-                              <strong style={{ color: '#fff', display: 'block' }}>{reg.participants?.name}</strong>
-                              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                @{reg.participants?.nickname || 'sin_nickname'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '14px 8px', textAlign: 'center' }}>
-                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                                <button
-                                  onClick={() => setExpandedRegId(expandedRegId === reg.id ? null : reg.id)}
-                                  className="btn-secondary"
-                                  style={{ 
-                                    display: 'inline-flex', 
-                                    alignItems: 'center', 
-                                    gap: '6px', 
-                                    fontSize: '13px', 
-                                    padding: '6px 12px',
-                                    background: expandedRegId === reg.id ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255,255,255,0.02)',
-                                    color: expandedRegId === reg.id ? 'var(--primary)' : '#fff',
-                                    borderColor: expandedRegId === reg.id ? 'var(--primary)' : 'var(--border-glass)'
-                                  }}
-                                >
-                                  {expandedRegId === reg.id ? 'Ocultar Pronósticos' : 'Ver Pronósticos'}
-                                </button>
-                              </div>
-                            </td>
-                            <td style={{ padding: '14px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)', fontSize: '15px' }}>
-                              {reg.points} pts
-                            </td>
-                          </tr>
-                          {expandedRegId === reg.id && (
-                            <tr>
-                              <td colSpan={3} style={{ padding: '15px 20px', background: 'rgba(0,0,0,0.2)' }}>
-                                {reg.forecasts && reg.forecasts.length > 0 ? (
-                                  <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                                    gap: '12px'
-                                  }}>
-                                    {matches.filter(m => m.jornada === reg.jornada).sort((a, b) => a.id - b.id).map((match, idx) => {
-                                      const forecast = reg.forecasts?.find((f: any) => f.match_id === match.id);
-                                      const predVal = forecast?.prediction;
-                                      const isMatchFinished = match.status === 'finished';
-                                      
-                                      let isCorrect = false;
-                                      let pointsGained = 0;
-                                      if (isMatchFinished && predVal === match.result) {
-                                        isCorrect = true;
-                                        pointsGained = 1;
-                                      }
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  
+                  {/* Search bar inside transparency tab */}
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      placeholder="🔍 Buscar participante por nombre..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{
+                        padding: '10px 14px',
+                        fontSize: '14px',
+                        background: 'rgba(0,0,0,0.3)',
+                        border: '1px solid var(--border-glass)',
+                        borderRadius: '8px',
+                        color: '#fff',
+                        width: '100%',
+                        maxWidth: '300px'
+                      }}
+                    />
+                  </div>
 
-                                      return (
-                                        <div 
-                                          key={match.id}
-                                          style={{
-                                            background: 'rgba(255,255,255,0.01)',
-                                            border: '1px solid var(--border-glass)',
-                                            borderRadius: '8px',
-                                            padding: '10px 14px',
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            fontSize: '13px'
-                                          }}
-                                        >
-                                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                            <span style={{ fontSize: '12px', color: '#fff', fontWeight: '600' }}>
-                                              {idx + 1}. {match.local_team} vs {match.visitor_team}
-                                            </span>
-                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '2px' }}>
-                                              <span style={{ 
-                                                fontSize: '11px', 
-                                                background: 'rgba(255,255,255,0.05)', 
-                                                padding: '1px 5px', 
-                                                borderRadius: '4px',
-                                                color: 'var(--text-secondary)'
-                                              }}>
-                                                Pronóstico: <strong style={{ color: '#fff' }}>{predVal || '-'}</strong>
-                                              </span>
-                                              {isMatchFinished && (
-                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                                  Resultado: <strong style={{ color: '#fff' }}>{match.result}</strong>
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
+                  {/* Comparative Matrix Table */}
+                  <div style={{ overflowX: 'auto', background: 'rgba(0, 0, 0, 0.2)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-glass)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center', fontSize: '13px' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}>
+                          <th style={{ padding: '10px 8px', textAlign: 'left', minWidth: '150px' }}>Participante</th>
+                          {selectedJornadaMatches.map((m, idx) => (
+                            <th key={m.id} style={{ padding: '10px 8px', minWidth: '45px' }} title={`${m.local_team} vs ${m.visitor_team}`}>
+                              P{idx + 1}
+                            </th>
+                          ))}
+                          <th style={{ padding: '10px 8px', fontWeight: '700', color: 'var(--primary)', minWidth: '50px' }}>Puntos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transparencyData
+                          .filter(reg => {
+                            const name = reg.participants?.name || '';
+                            const nick = reg.participants?.nickname || '';
+                            return name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                   nick.toLowerCase().includes(searchTerm.toLowerCase());
+                          })
+                          .map((reg) => (
+                            <tr key={reg.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                              <td style={{ padding: '12px 8px', textAlign: 'left' }}>
+                                <strong style={{ color: '#fff', display: 'block' }}>{reg.participants?.name}</strong>
+                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{reg.participants?.nickname || 'sin_nick'}</span>
+                              </td>
+                              {selectedJornadaMatches.map((match) => {
+                                const forecast = reg.forecasts?.find((f: any) => f.match_id === match.id);
+                                const predVal = forecast?.prediction || '-';
+                                const isMatchFinished = match.status === 'finished';
+                                const isCorrect = isMatchFinished && predVal === match.result;
+                                
+                                let cellColor = 'var(--text-secondary)';
+                                let cellBg = 'transparent';
+                                
+                                if (isMatchFinished) {
+                                  cellColor = isCorrect ? '#fff' : 'rgba(255, 255, 255, 0.2)';
+                                  cellBg = isCorrect ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.08)';
+                                }
 
-                                          {isMatchFinished ? (
-                                            <span style={{
-                                              fontSize: '11px',
-                                              fontWeight: '700',
-                                              color: isCorrect ? 'var(--primary)' : 'rgba(239, 68, 68, 0.7)',
-                                              background: isCorrect ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.05)',
-                                              padding: '3px 6px',
-                                              borderRadius: '4px',
-                                              border: isCorrect ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid rgba(239, 68, 68, 0.1)'
-                                            }}>
-                                              {isCorrect ? `+${pointsGained} pts` : '0 pts'}
-                                            </span>
-                                          ) : (
-                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                                              Pendiente
-                                            </span>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                ) : (
-                                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic', padding: '10px 0' }}>
-                                    Este participante no registró pronósticos para esta jornada.
-                                  </p>
-                                )}
+                                return (
+                                  <td 
+                                    key={match.id} 
+                                    style={{ 
+                                      padding: '12px 8px', 
+                                      color: cellColor, 
+                                      backgroundColor: cellBg, 
+                                      fontWeight: '700',
+                                      borderLeft: '1px solid rgba(255,255,255,0.02)',
+                                      borderRight: '1px solid rgba(255,255,255,0.02)'
+                                    }}
+                                  >
+                                    {predVal}
+                                  </td>
+                                );
+                              })}
+                              <td style={{ padding: '12px 8px', fontWeight: '700', color: 'var(--primary)', fontSize: '15px' }}>
+                                {reg.points}
                               </td>
                             </tr>
+                          ))
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Leyenda y Partidos de la Jornada */}
+                  <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-glass)', borderRadius: '10px', padding: '16px' }}>
+                    <h5 style={{ fontSize: '14px', color: '#fff', margin: '0 0 10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                      📋 Leyenda de Partidos (Jornada {selectedJornada})
+                    </h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+                      {selectedJornadaMatches.map((m, idx) => (
+                        <div key={m.id} style={{ fontSize: '12px', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                          <span><strong>P{idx + 1}:</strong> {m.local_team} vs {m.visitor_team}</span>
+                          {m.status === 'finished' ? (
+                            <strong style={{ color: 'var(--primary)', marginLeft: '6px' }}>[{m.result}]</strong>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '11px', fontStyle: 'italic', marginLeft: '6px' }}>Pendiente</span>
                           )}
-                        </React.Fragment>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+
                 </div>
               ) : (
                 <p style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)' }}>
