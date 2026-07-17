@@ -597,21 +597,22 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
       <div style={{ 
         display: 'flex', 
         borderBottom: '1px solid var(--border-glass)', 
-        gap: '5px',
-        overflowX: 'auto',
-        whiteSpace: 'nowrap',
-        WebkitOverflowScrolling: 'touch',
-        width: '100%'
+        gap: '8px',
+        flexWrap: 'wrap',
+        width: '100%',
+        paddingBottom: '8px'
       }}>
         <button
           onClick={() => setActiveTab('leaderboard')}
           style={{
+            flex: '1 1 auto',
+            textAlign: 'center',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'leaderboard' ? '3px solid var(--primary)' : '3px solid transparent',
             color: activeTab === 'leaderboard' ? '#fff' : 'var(--text-secondary)',
-            padding: '12px 20px',
-            fontSize: '16px',
+            padding: '10px 12px',
+            fontSize: 'clamp(12px, 3.2vw, 15px)',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease'
@@ -622,12 +623,14 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         <button
           onClick={() => setActiveTab('play')}
           style={{
+            flex: '1 1 auto',
+            textAlign: 'center',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'play' ? '3px solid var(--primary)' : '3px solid transparent',
             color: activeTab === 'play' ? '#fff' : 'var(--text-secondary)',
-            padding: '12px 20px',
-            fontSize: '16px',
+            padding: '10px 12px',
+            fontSize: 'clamp(12px, 3.2vw, 15px)',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease'
@@ -638,12 +641,14 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         <button
           onClick={() => setActiveTab('transparency')}
           style={{
+            flex: '1 1 auto',
+            textAlign: 'center',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'transparency' ? '3px solid var(--primary)' : '3px solid transparent',
             color: activeTab === 'transparency' ? '#fff' : 'var(--text-secondary)',
-            padding: '12px 20px',
-            fontSize: '16px',
+            padding: '10px 12px',
+            fontSize: 'clamp(12px, 3.2vw, 15px)',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease'
@@ -654,12 +659,14 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         <button
           onClick={() => setActiveTab('payment_info')}
           style={{
+            flex: '1 1 auto',
+            textAlign: 'center',
             background: 'none',
             border: 'none',
             borderBottom: activeTab === 'payment_info' ? '3px solid var(--primary)' : '3px solid transparent',
             color: activeTab === 'payment_info' ? '#fff' : 'var(--text-secondary)',
-            padding: '12px 20px',
-            fontSize: '16px',
+            padding: '10px 12px',
+            fontSize: 'clamp(12px, 3.2vw, 15px)',
             fontWeight: '600',
             cursor: 'pointer',
             transition: 'all 0.2s ease'

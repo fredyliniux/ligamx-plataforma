@@ -220,17 +220,16 @@ VITE_ADMIN_PIN=2026`}
           background: 'rgba(255,255,255,0.02)', 
           border: '1px solid var(--border-glass)', 
           borderRadius: '14px',
-          overflowX: 'auto',
-          whiteSpace: 'nowrap',
-          WebkitOverflowScrolling: 'touch',
-          maxWidth: '100%',
+          flexWrap: 'wrap',
           width: '100%'
         }}>
           <button
             onClick={() => setActiveTab('quiniela')}
             style={{
+              flex: '1 1 auto',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px',
               padding: '10px 20px',
               borderRadius: '10px',
@@ -250,8 +249,10 @@ VITE_ADMIN_PIN=2026`}
           <button
             onClick={() => setActiveTab('admin')}
             style={{
+              flex: '1 1 auto',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '8px',
               padding: '10px 20px',
               borderRadius: '10px',
