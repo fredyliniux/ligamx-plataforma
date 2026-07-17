@@ -161,6 +161,11 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
 
   const isAfterDeadline = deadline ? (new Date() > deadline) : false;
 
+  // Habilitar transparencia de Quinielas:
+  // - Normalmente después de la fecha límite
+  // - Jornada 1: Habilitar de una vez (después del jueves 16 de Julio a las 20:30 h)
+  const revealTransparency = isAfterDeadline || (selectedJornada === 1 && new Date() >= new Date('2026-07-16T20:30:00-06:00'));
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setReceiptFile(e.target.files[0]);
@@ -414,14 +419,8 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
     }
   };
 
-  // Generate a clean PDF print-out of the user's forecast sheet
+  // Generate a clean PDF print-out of the user's forecast sheet (same-window swap to bypass popup blockers)
   const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Por favor, permite las ventanas emergentes (popups) para poder descargar el PDF.');
-      return;
-    }
-
     const sortedMatches = [...selectedJornadaMatches].sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
     const matchRows = sortedMatches.map((match, idx) => {
       const pred = userPredictions[match.id] || 'Sin selección';
@@ -438,54 +437,42 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
       `;
     }).join('');
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Quiniela Liga MX - Jornada ${selectedJornada}</title>
-          <style>
-            body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 30px; color: #222; line-height: 1.5; }
-            .header-table { width: 100%; border: none; margin-bottom: 20px; }
-            h2 { color: #0066ff; margin: 0 0 10px 0; border-bottom: 2px solid #0066ff; padding-bottom: 8px; font-size: 26px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th { background-color: #f5f5f7; padding: 12px 10px; border: 1px solid #ddd; text-align: left; font-size: 14px; }
-            td { padding: 12px 10px; border: 1px solid #ddd; font-size: 14px; }
-            .info-box { background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; borderRadius: 8px; margin-bottom: 20px; }
-            .footer { text-align: center; font-size: 11px; color: #888; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px; }
-          </style>
-        </head>
-        <body>
-          <h2>🏆 Comprobante de Pronósticos - Liga MX</h2>
-          <div class="info-box">
-            <strong>Participante:</strong> ${loggedInUser?.name || 'Usuario'} (@${loggedInUser?.nickname || 'nickname'})<br>
-            <strong>Jornada Seleccionada:</strong> Jornada ${selectedJornada}<br>
-            <strong>Fecha de Registro:</strong> ${new Date().toLocaleString('es-MX')}<br>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 50px; text-align: center;">N°</th>
-                <th>Encuentro</th>
-                <th style="width: 250px; text-align: center;">Tu Pronóstico</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${matchRows}
-            </tbody>
-          </table>
-          <div class="footer">
-            Generado automáticamente por la Plataforma Quiniela Liga MX.<br>
-            <strong>Regla:</strong> Al registrar tu quiniela te comprometes a realizar el pago correspondiente ($50 MXN / $3 USD).
-          </div>
-          <script>
-            window.onload = function() {
-              window.print();
-              setTimeout(function() { window.close(); }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    const originalContent = document.body.innerHTML;
+    const originalTitle = document.title;
+
+    document.title = `Quiniela Liga MX - Jornada ${selectedJornada}`;
+    document.body.innerHTML = `
+      <div style="font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 30px; color: #222; line-height: 1.5; background: #fff; min-height: 100vh;">
+        <h2 style="color: #0066ff; margin: 0 0 10px 0; border-bottom: 2px solid #0066ff; padding-bottom: 8px; font-size: 26px;">🏆 Comprobante de Pronósticos - Liga MX</h2>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <strong>Participante:</strong> ${loggedInUser?.name || 'Usuario'} (@${loggedInUser?.nickname || 'nickname'})<br>
+          <strong>Jornada Seleccionada:</strong> Jornada ${selectedJornada}<br>
+          <strong>Fecha de Registro:</strong> ${new Date().toLocaleString('es-MX')}<br>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <thead>
+            <tr style="background-color: #f5f5f7;">
+              <th style="width: 50px; text-align: center; padding: 12px 10px; border: 1px solid #ddd;">N°</th>
+              <th style="padding: 12px 10px; border: 1px solid #ddd;">Encuentro</th>
+              <th style="width: 250px; text-align: center; padding: 12px 10px; border: 1px solid #ddd;">Tu Pronóstico</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${matchRows}
+          </tbody>
+        </table>
+        <div style="text-align: center; font-size: 11px; color: #888; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px;">
+          Generado automáticamente por la Plataforma Quiniela Liga MX.<br>
+          <strong>Regla:</strong> Al registrar tu quiniela te comprometes a realizar el pago correspondiente ($50 MXN / $3 USD).
+        </div>
+      </div>
+    `;
+
+    window.print();
+    
+    document.body.innerHTML = originalContent;
+    document.title = originalTitle;
+    window.location.reload();
   };
 
   useEffect(() => {
@@ -1215,6 +1202,26 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                       ⏳ Pago Pendiente de Validación
                     </span>
                   )}
+                  {Object.keys(userPredictions).length > 0 && (
+                    <button 
+                      onClick={handlePrint}
+                      style={{
+                        padding: '8px 14px',
+                        background: 'rgba(0, 102, 255, 0.12)',
+                        color: 'var(--primary)',
+                        border: '1px solid rgba(0, 102, 255, 0.25)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      🖨️ PDF / Imprimir
+                    </button>
+                  )}
                   <button 
                     onClick={handleLogout}
                     style={{
@@ -1434,7 +1441,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
             </p>
           </div>
 
-          {!isAfterDeadline ? (
+          {!revealTransparency ? (
             <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '36px', marginBottom: '10px' }}>🔒</div>
               <h4 style={{ color: '#fff', fontSize: '18px' }}>Contenido Bloqueado Temporalmente</h4>
