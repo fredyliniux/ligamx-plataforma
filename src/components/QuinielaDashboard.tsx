@@ -150,10 +150,15 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   
   // Deadline check:
   // - Límite de edición: Hora de inicio del primer partido de la jornada seleccionada
+  // - EXCEPCIÓN JORNADA 1: Se permite llenar hasta el viernes 17 de Julio a las 19:00 h (inicio del resto de partidos)
   const selectedJornadaMatches = matches.filter(m => m.jornada === selectedJornada);
-  const deadline = selectedJornadaMatches.length > 0
+  let deadline = selectedJornadaMatches.length > 0
     ? new Date(Math.min(...selectedJornadaMatches.map(m => new Date(m.match_date).getTime())))
     : null;
+
+  if (selectedJornada === 1) {
+    deadline = new Date('2026-07-17T19:00:00-06:00'); // Viernes 17 de Julio, 7:00 PM
+  }
 
   const isAfterDeadline = deadline ? (new Date() > deadline) : false;
 
