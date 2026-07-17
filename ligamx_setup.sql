@@ -65,3 +65,44 @@ CREATE INDEX IF NOT EXISTS idx_matches_jornada ON public.matches(jornada);
 CREATE INDEX IF NOT EXISTS idx_registrations_participant_jornada ON public.quiniela_registrations(participant_id, jornada);
 CREATE INDEX IF NOT EXISTS idx_forecasts_registration ON public.forecasts(registration_id);
 CREATE INDEX IF NOT EXISTS idx_forecasts_match ON public.forecasts(match_id);
+
+-- 8. Point Recalculation Trigger & Function
+CREATE OR REPLACE FUNCTION public.recalculate_quiniela_points(p_jornada INTEGER)
+RETURNS VOID AS $$
+DECLARE
+    r RECORD;
+    v_points INTEGER;
+BEGIN
+    FOR r IN 
+        SELECT id FROM public.quiniela_registrations WHERE jornada = p_jornada
+    LOOP
+        SELECT COUNT(*) INTO v_points
+        FROM public.forecasts f
+        JOIN public.matches m ON f.match_id = m.id
+        WHERE f.registration_id = r.id
+          AND m.jornada = p_jornada
+          AND m.status = 'finished'
+          AND f.prediction = m.result;
+
+        UPDATE public.quiniela_registrations
+        SET points = v_points
+        WHERE id = r.id;
+    END LOOP;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.on_match_result_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'UPDATE' AND (OLD.result IS DISTINCT FROM NEW.result OR OLD.status IS DISTINCT FROM NEW.status OR OLD.score_local IS DISTINCT FROM NEW.score_local OR OLD.score_visitor IS DISTINCT FROM NEW.score_visitor)) THEN
+        PERFORM public.recalculate_quiniela_points(NEW.jornada);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trigger_match_result_update ON public.matches;
+CREATE TRIGGER trigger_match_result_update
+AFTER UPDATE ON public.matches
+FOR EACH ROW
+EXECUTE FUNCTION public.on_match_result_update();
