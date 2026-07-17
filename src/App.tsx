@@ -198,14 +198,14 @@ VITE_ADMIN_PIN=2026`}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', maxWidth: '1200px', margin: '0 auto', width: '100%', padding: '0 20px' }}>
         
         {/* 1. Header */}
-        <header style={{ padding: '40px 0 20px 0', borderBottom: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', background: 'rgba(0, 102, 255, 0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '20px', border: '1px solid rgba(0, 102, 255, 0.2)', fontWeight: '600' }}>
+        <header style={{ padding: '30px 10px 20px 10px', borderBottom: '1px solid var(--border-glass)', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', background: 'rgba(0, 102, 255, 0.1)', color: 'var(--primary)', padding: '4px 12px', borderRadius: '20px', border: '1px solid rgba(0, 102, 255, 0.2)', fontWeight: '600' }}>
             <span>🏆</span> QUINIELA LIGA MX
           </div>
-          <h1 style={{ fontSize: '42px', margin: '5px 0', fontWeight: '800', letterSpacing: '-0.03em', background: 'linear-gradient(to right, #ffffff, #0066ff, #ff3b30)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 8vw, 42px)', margin: '5px 0', fontWeight: '800', letterSpacing: '-0.03em', background: 'linear-gradient(to right, #ffffff, #0066ff, #ff3b30)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', textAlign: 'center' }}>
             Quiniela Liga MX
           </h1>
-          <p style={{ fontSize: '16px', color: 'var(--text-secondary)', maxWidth: '600px' }}>
+          <p style={{ fontSize: 'clamp(14px, 4vw, 16px)', color: 'var(--text-secondary)', maxWidth: '600px', lineHeight: '1.5' }}>
             Registra tus pronósticos en pantalla por cada jornada, edítalos hasta el inicio del primer partido y sigue la tabla de posiciones en tiempo real.
           </p>
         </header>
@@ -214,13 +214,17 @@ VITE_ADMIN_PIN=2026`}
         <nav style={{ 
           display: 'flex', 
           justifyContent: 'center', 
-          gap: '12px', 
-          margin: '25px 0', 
+          gap: '10px', 
+          margin: '20px 0', 
           padding: '6px', 
           background: 'rgba(255,255,255,0.02)', 
           border: '1px solid var(--border-glass)', 
           borderRadius: '14px',
-          flexWrap: 'wrap'
+          overflowX: 'auto',
+          whiteSpace: 'nowrap',
+          WebkitOverflowScrolling: 'touch',
+          maxWidth: '100%',
+          width: '100%'
         }}>
           <button
             onClick={() => setActiveTab('quiniela')}

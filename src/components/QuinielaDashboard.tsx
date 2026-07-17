@@ -594,7 +594,15 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', padding: '10px 0' }}>
       
       {/* Tab Selector */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-glass)', gap: '10px' }}>
+      <div style={{ 
+        display: 'flex', 
+        borderBottom: '1px solid var(--border-glass)', 
+        gap: '5px',
+        overflowX: 'auto',
+        whiteSpace: 'nowrap',
+        WebkitOverflowScrolling: 'touch',
+        width: '100%'
+      }}>
         <button
           onClick={() => setActiveTab('leaderboard')}
           style={{
