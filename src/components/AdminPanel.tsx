@@ -603,6 +603,72 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  // Generate a clean PDF print-out of any user's forecast sheet from the Admin panel
+  const handlePrintAdmin = (reg: any) => {
+    const user = reg.participants;
+    const regDate = reg.created_at || new Date().toISOString();
+    
+    // Forecasts mapping
+    const predictionsMap: { [matchId: number]: string } = {};
+    reg.forecasts?.forEach((f: any) => {
+      predictionsMap[f.match_id] = f.prediction;
+    });
+
+    const sortedMatches = [...matches].filter(m => m.jornada === reg.jornada).sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
+    const matchRows = sortedMatches.map((match, idx) => {
+      const pred = predictionsMap[match.id] || 'Sin selección';
+      let predText = 'Empate';
+      if (pred === 'L') predText = `Local (${match.local_team})`;
+      if (pred === 'V') predText = `Visitante (${match.visitor_team})`;
+
+      return `
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">${idx + 1}</td>
+          <td style="padding: 10px; border: 1px solid #ddd;"><strong>${match.local_team}</strong> vs <strong>${match.visitor_team}</strong></td>
+          <td style="padding: 10px; border: 1px solid #ddd; text-align: center; font-weight: bold; color: #0066ff;">[ ${pred} ] - ${predText}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const originalContent = document.body.innerHTML;
+    const originalTitle = document.title;
+
+    document.title = `Quiniela Liga MX - Jornada ${reg.jornada}`;
+    document.body.innerHTML = `
+      <div style="font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 30px; color: #222; line-height: 1.5; background: #fff; min-height: 100vh;">
+        <h2 style="color: #0066ff; margin: 0 0 10px 0; border-bottom: 2px solid #0066ff; padding-bottom: 8px; font-size: 26px;">🏆 Comprobante de Pronósticos - Liga MX</h2>
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+          <strong>Participante:</strong> ${user?.name || 'Usuario'} (@${user?.nickname || 'nickname'})<br>
+          <strong>Jornada Seleccionada:</strong> Jornada ${reg.jornada}<br>
+          <strong>Fecha de Llenado / Registro:</strong> ${new Date(regDate).toLocaleString('es-MX')}<br>
+          <strong>Fecha de Impresión / Descarga:</strong> ${new Date().toLocaleString('es-MX')}<br>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+          <thead>
+            <tr style="background-color: #f5f5f7;">
+              <th style="width: 50px; text-align: center; padding: 12px 10px; border: 1px solid #ddd;">N°</th>
+              <th style="padding: 12px 10px; border: 1px solid #ddd;">Encuentro</th>
+              <th style="width: 250px; text-align: center; padding: 12px 10px; border: 1px solid #ddd;">Tu Pronóstico</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${matchRows}
+          </tbody>
+        </table>
+        <div style="text-align: center; font-size: 11px; color: #888; margin-top: 40px; border-top: 1px solid #eee; padding-top: 15px;">
+          Generado automáticamente por la Plataforma Quiniela Liga MX.<br>
+          <strong>Regla:</strong> Al registrar tu quiniela te comprometes a realizar el pago correspondiente ($50 MXN / $3 USD).
+        </div>
+      </div>
+    `;
+
+    window.print();
+    
+    document.body.innerHTML = originalContent;
+    document.title = originalTitle;
+    window.location.reload();
+  };
+
   // Save Settings
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1268,19 +1334,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           <td style={{ padding: '14px 8px', textAlign: 'center' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
                               <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', alignItems: 'center' }}>
-                                {reg.quiniela_image_url ? (
-                                  <a 
-                                    href={reg.quiniela_image_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="btn-secondary"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}
-                                  >
-                                    <Eye size={14} /> Ver Imagen
-                                  </a>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '12px', background: 'rgba(255,255,255,0.03)', padding: '4px 8px', borderRadius: '4px' }}>Sin imagen</span>
-                                )}
+                                <button
+                                  onClick={() => handlePrintAdmin(reg)}
+                                  className="btn-secondary"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '6px 12px' }}
+                                  title="Ver y generar PDF de los pronósticos digitales"
+                                >
+                                  <Eye size={14} /> Ver Selección
+                                </button>
                                 <button
                                   onClick={() => openTranscription(reg)}
                                   className="btn-secondary"

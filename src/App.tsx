@@ -41,7 +41,7 @@ function App() {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch registrations with participants
+      // 1. Fetch registrations with participants and forecasts
       const { data: regsData, error: regsErr } = await supabase
         .from('quiniela_registrations')
         .select(`
@@ -52,7 +52,8 @@ function App() {
           payment_receipt_url,
           points,
           created_at,
-          participants (id, name, phone, nickname)
+          participants (id, name, phone, nickname),
+          forecasts (id, match_id, prediction)
         `)
         .order('created_at', { ascending: false });
 

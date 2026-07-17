@@ -420,10 +420,23 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   };
 
   // Generate a clean PDF print-out of the user's forecast sheet (same-window swap to bypass popup blockers)
-  const handlePrint = () => {
+  const handlePrint = (customReg?: any) => {
+    const user = customReg ? customReg.participants : loggedInUser;
+    const regDate = customReg ? customReg.created_at : new Date().toISOString();
+    
+    // Forecasts mapping
+    let predictionsMap: { [matchId: number]: string } = {};
+    if (customReg) {
+      customReg.forecasts?.forEach((f: any) => {
+        predictionsMap[f.match_id] = f.prediction;
+      });
+    } else {
+      predictionsMap = userPredictions;
+    }
+
     const sortedMatches = [...selectedJornadaMatches].sort((a, b) => new Date(a.match_date).getTime() - new Date(b.match_date).getTime());
     const matchRows = sortedMatches.map((match, idx) => {
-      const pred = userPredictions[match.id] || 'Sin selección';
+      const pred = predictionsMap[match.id] || 'Sin selección';
       let predText = 'Empate';
       if (pred === 'L') predText = `Local (${match.local_team})`;
       if (pred === 'V') predText = `Visitante (${match.visitor_team})`;
@@ -445,9 +458,10 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
       <div style="font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; padding: 30px; color: #222; line-height: 1.5; background: #fff; min-height: 100vh;">
         <h2 style="color: #0066ff; margin: 0 0 10px 0; border-bottom: 2px solid #0066ff; padding-bottom: 8px; font-size: 26px;">🏆 Comprobante de Pronósticos - Liga MX</h2>
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-          <strong>Participante:</strong> ${loggedInUser?.name || 'Usuario'} (@${loggedInUser?.nickname || 'nickname'})<br>
+          <strong>Participante:</strong> ${user?.name || 'Usuario'} (@${user?.nickname || 'nickname'})<br>
           <strong>Jornada Seleccionada:</strong> Jornada ${selectedJornada}<br>
-          <strong>Fecha de Registro:</strong> ${new Date().toLocaleString('es-MX')}<br>
+          <strong>Fecha de Llenado / Registro:</strong> ${new Date(regDate).toLocaleString('es-MX')}<br>
+          <strong>Fecha de Impresión / Descarga:</strong> ${new Date().toLocaleString('es-MX')}<br>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
           <thead>
@@ -1516,8 +1530,26 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                           .map((reg) => (
                             <tr key={reg.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                               <td style={{ padding: '12px 8px', textAlign: 'left' }}>
-                                <strong style={{ color: '#fff', display: 'block' }}>{reg.participants?.name}</strong>
-                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{reg.participants?.nickname || 'sin_nick'}</span>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <strong style={{ color: '#fff' }}>{reg.participants?.name}</strong>
+                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>@{reg.participants?.nickname || 'sin_nick'}</span>
+                                  <button
+                                    onClick={() => handlePrint(reg)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: 'var(--primary)',
+                                      fontSize: '11px',
+                                      fontWeight: '600',
+                                      padding: '2px 0 0 0',
+                                      cursor: 'pointer',
+                                      textAlign: 'left',
+                                      width: 'fit-content'
+                                    }}
+                                  >
+                                    🖨️ PDF
+                                  </button>
+                                </div>
                               </td>
                               {selectedJornadaMatches.map((match) => {
                                 const forecast = reg.forecasts?.find((f: any) => f.match_id === match.id);
