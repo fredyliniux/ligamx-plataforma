@@ -29,65 +29,65 @@ const supabase = createClient(url, key);
 const matches = [
   {
     jornada: 2,
-    local_team: 'América',
-    visitor_team: 'Querétaro',
-    match_date: '2026-07-24T19:00:00-06:00',
-    status: 'pending'
-  },
-  {
-    jornada: 2,
-    local_team: 'Mazatlán',
-    visitor_team: 'Atlético de San Luis',
-    match_date: '2026-07-24T21:00:00-06:00',
-    status: 'pending'
-  },
-  {
-    jornada: 2,
-    local_team: 'Tijuana',
-    visitor_team: 'Guadalajara',
-    match_date: '2026-07-24T21:00:00-06:00',
-    status: 'pending'
-  },
-  {
-    jornada: 2,
-    local_team: 'Atlas',
-    visitor_team: 'Tigres UANL',
-    match_date: '2026-07-24T21:05:00-06:00',
-    status: 'pending'
-  },
-  {
-    jornada: 2,
-    local_team: 'Necaxa',
+    local_team: 'Cruz Azul',
     visitor_team: 'Puebla',
-    match_date: '2026-07-25T17:00:00-06:00',
-    status: 'pending'
-  },
-  {
-    jornada: 2,
-    local_team: 'León',
-    visitor_team: 'Pachuca',
-    match_date: '2026-07-25T17:00:00-06:00',
+    match_date: '2026-07-21T19:00:00-06:00', // Martes 21 de Julio 19:00 h
     status: 'pending'
   },
   {
     jornada: 2,
     local_team: 'Toluca',
+    visitor_team: 'Pumas UNAM',
+    match_date: '2026-07-21T21:00:00-06:00', // Martes 21 de Julio 21:00 h
+    status: 'pending'
+  },
+  {
+    jornada: 2,
+    local_team: 'Tigres UANL',
+    visitor_team: 'Atlético de San Luis',
+    match_date: '2026-07-24T19:00:00-06:00', // Viernes 24 de Julio 19:00 h
+    status: 'pending'
+  },
+  {
+    jornada: 2,
+    local_team: 'Tijuana',
+    visitor_team: 'León',
+    match_date: '2026-07-24T21:00:00-06:00', // Viernes 24 de Julio 21:00 h
+    status: 'pending'
+  },
+  {
+    jornada: 2,
+    local_team: 'Atlante',
+    visitor_team: 'América',
+    match_date: '2026-07-24T21:00:00-06:00', // Viernes 24 de Julio 21:00 h
+    status: 'pending'
+  },
+  {
+    jornada: 2,
+    local_team: 'Guadalajara',
     visitor_team: 'Juárez',
-    match_date: '2026-07-25T19:00:00-06:00',
+    match_date: '2026-07-25T17:07:00-06:00', // Sábado 25 de Julio 17:07 h
     status: 'pending'
   },
   {
     jornada: 2,
     local_team: 'Santos Laguna',
-    visitor_team: 'Pumas UNAM',
-    match_date: '2026-07-25T19:05:00-06:00',
+    visitor_team: 'Atlas',
+    match_date: '2026-07-25T21:00:00-06:00', // Sábado 25 de Julio 21:00 h
     status: 'pending'
   },
   {
     jornada: 2,
-    local_team: 'Monterrey',
-    visitor_team: 'Cruz Azul',
-    match_date: '2026-07-25T21:00:00-06:00',
+    local_team: 'Necaxa',
+    visitor_team: 'Monterrey',
+    match_date: '2026-07-26T17:00:00-06:00', // Domingo 26 de Julio 17:00 h
+    status: 'pending'
+  },
+  {
+    jornada: 2,
+    local_team: 'Pachuca',
+    visitor_team: 'Querétaro',
+    match_date: '2026-07-26T19:00:00-06:00', // Domingo 26 de Julio 19:00 h
     status: 'pending'
   }
 ];

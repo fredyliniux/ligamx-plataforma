@@ -29,13 +29,22 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   // Auto-detect active jornada based on matches
   useEffect(() => {
     if (matches && matches.length > 0 && !hasSetInitialJornada) {
-      const pendingMatches = matches.filter(m => m.status === 'pending');
-      if (pendingMatches.length > 0) {
-        const minPendingJornada = Math.min(...pendingMatches.map(m => m.jornada));
-        setSelectedJornada(minPendingJornada);
+      // Find open upcoming matches whose kickoff hasn't passed yet
+      const now = new Date();
+      const openMatches = matches.filter(m => m.status === 'pending' && new Date(m.match_date) > now);
+      
+      if (openMatches.length > 0) {
+        const minOpenJornada = Math.min(...openMatches.map(m => m.jornada));
+        setSelectedJornada(minOpenJornada);
       } else {
-        const maxJornada = Math.max(...matches.map(m => m.jornada));
-        setSelectedJornada(maxJornada);
+        const pendingMatches = matches.filter(m => m.status === 'pending');
+        if (pendingMatches.length > 0) {
+          const maxPendingJornada = Math.max(...pendingMatches.map(m => m.jornada));
+          setSelectedJornada(maxPendingJornada);
+        } else {
+          const maxJornada = Math.max(...matches.map(m => m.jornada));
+          setSelectedJornada(maxJornada);
+        }
       }
       setHasSetInitialJornada(true);
     }
