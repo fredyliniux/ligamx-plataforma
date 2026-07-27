@@ -555,7 +555,15 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
       // Must have participated in at least one confirmed jornada up to selectedJornada
       return row.confirmedJornadas.some(j => j <= selectedJornada);
     })
-    .sort((a, b) => getAccumulatedPoints(b, selectedJornada) - getAccumulatedPoints(a, selectedJornada));
+    .sort((a, b) => {
+      const pointsA = a.jornadaPoints[selectedJornada] || 0;
+      const pointsB = b.jornadaPoints[selectedJornada] || 0;
+      if (pointsB !== pointsA) {
+        return pointsB - pointsA;
+      }
+      // Tie breaker: accumulated points up to selectedJornada
+      return getAccumulatedPoints(b, selectedJornada) - getAccumulatedPoints(a, selectedJornada);
+    });
 
   const filteredLeaderboard = sortedLeaderboard.filter(row => 
     row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
