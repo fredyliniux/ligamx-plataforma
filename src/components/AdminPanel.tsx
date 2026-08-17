@@ -306,10 +306,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     const status = editState.status;
 
     const matchObj = matches.find(m => m.id === matchId);
-    const isKnockout = matchObj && matchObj.jornada >= 4;
+    const isKnockout = matchObj && matchObj.jornada > 17;
 
     if (status === 'finished' && isKnockout && localScore !== null && visitorScore !== null && localScore === visitorScore) {
-      alert('En la Fase de Eliminación (Jornada 4+), no puede haber empates. Por favor ingresa el marcador final (incluyendo penales o tiempos extra) para definir al ganador.');
+      alert('En la Fase de Eliminación (Jornada 18+), no puede haber empates. Por favor ingresa el marcador final (incluyendo penales o tiempos extra) para definir al ganador.');
       return;
     }
 
@@ -1882,7 +1882,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <div style={{ display: 'flex', gap: '6px' }}>
                               {[
                                 { key: 'L', label: 'Local' },
-                                ...(match.jornada >= 4 ? [] : [{ key: 'E', label: 'Empate' }]),
+                                ...(match.jornada > 17 ? [] : [{ key: 'E', label: 'Empate' }]),
                                 { key: 'V', label: 'Visita' }
                               ].map(opt => {
                                 const isSelected = currentPred === opt.key;
