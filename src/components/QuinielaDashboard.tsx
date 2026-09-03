@@ -24,7 +24,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   // Navigation & Selector State
   const [selectedJornada, setSelectedJornada] = useState(1);
   const [hasSetInitialJornada, setHasSetInitialJornada] = useState(false);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'play' | 'transparency' | 'payment_info'>('leaderboard');
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'general_standings' | 'play' | 'transparency' | 'payment_info'>('leaderboard');
 
   // Auto-detect active jornada based on matches
   useEffect(() => {
@@ -570,6 +570,22 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
     row.nickname.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const sortedGeneralStandings = Object.values(participantMap)
+    .filter(row => row.confirmedJornadas.length > 0)
+    .sort((a, b) => {
+      const accA = getAccumulatedPoints(a, selectedJornada);
+      const accB = getAccumulatedPoints(b, selectedJornada);
+      if (accB !== accA) {
+        return accB - accA;
+      }
+      return (b.jornadaPoints[selectedJornada] || 0) - (a.jornadaPoints[selectedJornada] || 0);
+    });
+
+  const filteredGeneralStandings = sortedGeneralStandings.filter(row => 
+    row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    row.nickname.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // Calculate Stats for the Selected Jornada
   const registrationsForJornada = registrations.filter(r => r.jornada === selectedJornada);
   const confirmedForJornada = registrationsForJornada.filter(r => r.payment_status === 'confirmed');
@@ -635,7 +651,25 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
             transition: 'all 0.2s ease'
           }}
         >
-          🏆 Tabla de Posiciones
+          🏆 Tabla de la Jornada
+        </button>
+        <button
+          onClick={() => setActiveTab('general_standings')}
+          style={{
+            flex: '1 1 auto',
+            textAlign: 'center',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'general_standings' ? '3px solid var(--primary)' : '3px solid transparent',
+            color: activeTab === 'general_standings' ? '#fff' : 'var(--text-secondary)',
+            padding: '10px 12px',
+            fontSize: 'clamp(12px, 3.2vw, 15px)',
+            fontWeight: '600',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+        >
+          📊 Tabla General
         </button>
         <button
           onClick={() => setActiveTab('play')}
@@ -850,17 +884,22 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
           )}
 
           <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Trophy size={20} style={{ color: '#fbbf24' }} /> Tabla de Posiciones
-              </h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+              <div>
+                <h3 style={{ fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <Trophy size={20} style={{ color: '#fbbf24' }} /> Posiciones - Jornada {selectedJornada}
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Aciertos obtenidos por cada participante únicamente en la Jornada {selectedJornada}.
+                </p>
+              </div>
               <div style={{ width: '250px', position: 'relative' }}>
                 <input
                   type="text"
                   placeholder="Buscar participante..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ padding: '8px 12px 8px 36px', fontSize: '14px' }}
+                  style={{ padding: '8px 12px 8px 36px', fontSize: '14px', width: '100%' }}
                 />
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
               </div>
@@ -872,8 +911,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                   <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}>
                     <th style={{ padding: '12px 8px', width: '60px', textAlign: 'center' }}>Rango</th>
                     <th style={{ padding: '12px 8px' }}>Participante</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'right', width: '150px' }}>Pts Jornada {selectedJornada}</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'right', width: '180px', fontWeight: '700', color: 'var(--primary)' }}>Pts Acumulados</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'right', width: '200px', fontWeight: '700', color: 'var(--primary)' }}>Pts Jornada {selectedJornada}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -892,8 +930,79 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                             <strong style={{ color: isGold ? '#fbbf24' : '#fff', display: 'block' }}>{row.name}</strong>
                             <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>@{row.nickname}</span>
                           </td>
-                          <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: '500', color: 'var(--text-secondary)' }}>
+                          <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)', fontSize: '17px' }}>
                             {row.jornadaPoints[selectedJornada] || 0} pts
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={3} style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        Aún no hay participantes con pagos confirmados registrados.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW: GENERAL STANDINGS (TABLA GENERAL ACUMULADA) */}
+      {activeTab === 'general_standings' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+              <div>
+                <h3 style={{ fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
+                  <Trophy size={20} style={{ color: 'var(--primary)' }} /> Tabla General Acumulada
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                  Puntuación global acumulada de todos los participantes a lo largo del torneo (hasta la Jornada {selectedJornada}).
+                </p>
+              </div>
+              <div style={{ width: '250px', position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Buscar participante..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ padding: '8px 12px 8px 36px', fontSize: '14px', width: '100%' }}
+                />
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+              </div>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '15px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}>
+                    <th style={{ padding: '12px 8px', width: '60px', textAlign: 'center' }}>Rango</th>
+                    <th style={{ padding: '12px 8px' }}>Participante</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'center', width: '160px' }}>Jornadas Jugadas</th>
+                    <th style={{ padding: '12px 8px', textAlign: 'right', width: '180px', fontWeight: '700', color: 'var(--primary)' }}>Pts Acumulados</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredGeneralStandings.length > 0 ? (
+                    filteredGeneralStandings.map((row, index) => {
+                      const isGold = index === 0;
+                      const isSilver = index === 1;
+                      const isBronze = index === 2;
+
+                      return (
+                        <tr key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: isGold ? 'rgba(251,191,36,0.03)' : 'none' }}>
+                          <td style={{ padding: '16px 8px', textAlign: 'center' }}>
+                            {isGold ? '🥇' : isSilver ? '🥈' : isBronze ? '🥉' : `${index + 1}`}
+                          </td>
+                          <td style={{ padding: '16px 8px' }}>
+                            <strong style={{ color: isGold ? '#fbbf24' : '#fff', display: 'block' }}>{row.name}</strong>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>@{row.nickname}</span>
+                          </td>
+                          <td style={{ padding: '16px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            {row.confirmedJornadas.length} jornadas
                           </td>
                           <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)', fontSize: '17px' }}>
                             {getAccumulatedPoints(row, selectedJornada)} pts
