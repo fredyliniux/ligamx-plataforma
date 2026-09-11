@@ -1300,7 +1300,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               🏆 Asignar Puntos de la Quiniela - Jornada {selectedJornada}
             </h3>
             <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '20px', lineHeight: '1.5' }}>
-              Revisa la imagen de la quiniela de cada participante confirmado, compara sus aciertos y asígnale su puntuación de forma manual. Sus puntos se sumarán automáticamente a la Tabla de Posiciones general.
+              Revisa la imagen de la quiniela de cada participante confirmado, compara sus aciertos y asígnale su puntuación de forma manual. Sus puntos se sumarán automáticamente a la Tabla de Posiciones de la Jornada.
             </p>
 
             <div style={{ overflowX: 'auto' }}>

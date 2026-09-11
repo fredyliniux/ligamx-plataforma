@@ -24,7 +24,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   // Navigation & Selector State
   const [selectedJornada, setSelectedJornada] = useState(1);
   const [hasSetInitialJornada, setHasSetInitialJornada] = useState(false);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'general_standings' | 'play' | 'transparency' | 'payment_info'>('leaderboard');
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'play' | 'transparency' | 'payment_info'>('leaderboard');
 
   // Auto-detect active jornada based on matches
   useEffect(() => {
@@ -504,17 +504,14 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
     }
   }, [activeTab, selectedJornada]);
 
-  // Compile Leaderboard (Total Points from registrations)
-  // We sum points grouped by participant_id
-  
+  // Compile Leaderboard (Points per selected jornada)
   const participantMap: { 
     [partId: string]: { 
       name: string; 
       nickname: string;
       phone: string; 
-      totalPoints: number; 
       jornadaPoints: { [jornada: number]: number };
-      confirmedJornadas: number[] 
+      confirmedJornadas: number[];
     } 
   } = {};
   
@@ -530,58 +527,28 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
           name: partName,
           nickname: partNickname,
           phone: partPhone,
-          totalPoints: 0,
           jornadaPoints: {},
           confirmedJornadas: []
         };
       }
       
-      participantMap[partId].totalPoints += reg.points;
       participantMap[partId].jornadaPoints[reg.jornada] = reg.points;
       participantMap[partId].confirmedJornadas.push(reg.jornada);
     }
   });
 
-  const getAccumulatedPoints = (row: any, targetJornada: number) => {
-    let sum = 0;
-    for (let k = 1; k <= targetJornada; k++) {
-      sum += row.jornadaPoints[k] || 0;
-    }
-    return sum;
-  };
-
   const sortedLeaderboard = Object.values(participantMap)
-    .filter(row => {
-      // Must have participated in at least one confirmed jornada up to selectedJornada
-      return row.confirmedJornadas.some(j => j <= selectedJornada);
-    })
+    .filter(row => row.confirmedJornadas.includes(selectedJornada))
     .sort((a, b) => {
       const pointsA = a.jornadaPoints[selectedJornada] || 0;
       const pointsB = b.jornadaPoints[selectedJornada] || 0;
       if (pointsB !== pointsA) {
         return pointsB - pointsA;
       }
-      // Tie breaker: accumulated points up to selectedJornada
-      return getAccumulatedPoints(b, selectedJornada) - getAccumulatedPoints(a, selectedJornada);
+      return a.name.localeCompare(b.name);
     });
 
   const filteredLeaderboard = sortedLeaderboard.filter(row => 
-    row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    row.nickname.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const sortedGeneralStandings = Object.values(participantMap)
-    .filter(row => row.confirmedJornadas.length > 0)
-    .sort((a, b) => {
-      const accA = getAccumulatedPoints(a, selectedJornada);
-      const accB = getAccumulatedPoints(b, selectedJornada);
-      if (accB !== accA) {
-        return accB - accA;
-      }
-      return (b.jornadaPoints[selectedJornada] || 0) - (a.jornadaPoints[selectedJornada] || 0);
-    });
-
-  const filteredGeneralStandings = sortedGeneralStandings.filter(row => 
     row.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     row.nickname.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -600,26 +567,14 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
   let jornadaWinners: { name: string; points: number }[] = [];
   
   if (hasFinishedMatches) {
-    if (selectedJornada >= 5) {
-      if (sortedLeaderboard.length > 0) {
-        maxJornadaPoints = getAccumulatedPoints(sortedLeaderboard[0], selectedJornada);
-        jornadaWinners = sortedLeaderboard
-          .filter(row => getAccumulatedPoints(row, selectedJornada) === maxJornadaPoints)
-          .map(row => ({
-            name: row.name,
-            points: maxJornadaPoints
-          }));
-      }
-    } else {
-      if (confirmedForJornada.length > 0) {
-        maxJornadaPoints = Math.max(...confirmedForJornada.map(r => r.points), 0);
-        jornadaWinners = confirmedForJornada
-          .filter(r => r.points === maxJornadaPoints)
-          .map(r => ({
-            name: r.participants?.name || 'Invitado',
-            points: r.points
-          }));
-      }
+    if (confirmedForJornada.length > 0) {
+      maxJornadaPoints = Math.max(...confirmedForJornada.map(r => r.points), 0);
+      jornadaWinners = confirmedForJornada
+        .filter(r => r.points === maxJornadaPoints)
+        .map(r => ({
+          name: r.participants?.name || 'Invitado',
+          points: r.points
+        }));
     }
   }
 
@@ -652,24 +607,6 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
           }}
         >
           🏆 Tabla de la Jornada
-        </button>
-        <button
-          onClick={() => setActiveTab('general_standings')}
-          style={{
-            flex: '1 1 auto',
-            textAlign: 'center',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'general_standings' ? '3px solid var(--primary)' : '3px solid transparent',
-            color: activeTab === 'general_standings' ? '#fff' : 'var(--text-secondary)',
-            padding: '10px 12px',
-            fontSize: 'clamp(12px, 3.2vw, 15px)',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          📊 Tabla General
         </button>
         <button
           onClick={() => setActiveTab('play')}
@@ -834,7 +771,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                 <h3 style={{ fontSize: '22px', margin: 0, display: 'flex', alignItems: 'center', gap: '10px', color: '#fbbf24', fontWeight: '700' }}>
-                  <Award size={26} /> {selectedJornada >= 5 ? `Podio de Ganadores - Fase Final (J5 - J${selectedJornada})` : `Podio de Ganadores - Jornada ${selectedJornada}`}
+                  <Award size={26} /> Podio de Ganadores - Jornada {selectedJornada}
                 </h3>
                 <span style={{ 
                   fontSize: '12px', 
@@ -849,10 +786,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
                 </span>
               </div>
               <p style={{ fontSize: '15px', color: 'var(--text-secondary)', margin: 0, lineHeight: '1.5' }}>
-                {selectedJornada >= 5 
-                  ? `Felicidades a los participantes con la puntuación acumulada más alta (J5 - J${selectedJornada}) con un total de ` 
-                  : `Felicidades a los participantes con la puntuación más alta en la Jornada ${selectedJornada} con un total de `
-                }
+                Felicidades a los participantes con la puntuación más alta en la Jornada {selectedJornada} con un total de{' '}
                 <strong style={{ color: '#fbbf24' }}>{maxJornadaPoints} aciertos</strong>:
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginTop: '5px' }}>
@@ -950,79 +884,7 @@ export const QuinielaDashboard: React.FC<QuinielaDashboardProps> = ({
         </div>
       )}
 
-      {/* VIEW: GENERAL STANDINGS (TABLA GENERAL ACUMULADA) */}
-      {activeTab === 'general_standings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-              <div>
-                <h3 style={{ fontSize: '20px', display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
-                  <Trophy size={20} style={{ color: 'var(--primary)' }} /> Tabla General Acumulada
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
-                  Puntuación global acumulada de todos los participantes a lo largo del torneo (hasta la Jornada {selectedJornada}).
-                </p>
-              </div>
-              <div style={{ width: '250px', position: 'relative' }}>
-                <input
-                  type="text"
-                  placeholder="Buscar participante..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ padding: '8px 12px 8px 36px', fontSize: '14px', width: '100%' }}
-                />
-                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
-              </div>
-            </div>
 
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '15px' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}>
-                    <th style={{ padding: '12px 8px', width: '60px', textAlign: 'center' }}>Rango</th>
-                    <th style={{ padding: '12px 8px' }}>Participante</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'center', width: '160px' }}>Jornadas Jugadas</th>
-                    <th style={{ padding: '12px 8px', textAlign: 'right', width: '180px', fontWeight: '700', color: 'var(--primary)' }}>Pts Acumulados</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredGeneralStandings.length > 0 ? (
-                    filteredGeneralStandings.map((row, index) => {
-                      const isGold = index === 0;
-                      const isSilver = index === 1;
-                      const isBronze = index === 2;
-
-                      return (
-                        <tr key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', background: isGold ? 'rgba(251,191,36,0.03)' : 'none' }}>
-                          <td style={{ padding: '16px 8px', textAlign: 'center' }}>
-                            {isGold ? '🥇' : isSilver ? '🥈' : isBronze ? '🥉' : `${index + 1}`}
-                          </td>
-                          <td style={{ padding: '16px 8px' }}>
-                            <strong style={{ color: isGold ? '#fbbf24' : '#fff', display: 'block' }}>{row.name}</strong>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>@{row.nickname}</span>
-                          </td>
-                          <td style={{ padding: '16px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            {row.confirmedJornadas.length} jornadas
-                          </td>
-                          <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)', fontSize: '17px' }}>
-                            {getAccumulatedPoints(row, selectedJornada)} pts
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={4} style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        Aún no hay participantes con pagos confirmados registrados.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
 
       {activeTab === 'play' && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
