@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Ticket, QuinielaRegistration, Match, BankDetails, Prices, Links } from '../types';
-import { ShieldAlert, Check, Eye, Trash2, Plus, Save, Settings, FileText, X, RotateCcw, Upload, Calendar } from 'lucide-react';
+import { ShieldAlert, Check, Eye, Trash2, Plus, Save, Settings, FileText, X, RotateCcw, Upload, Calendar, Copy, Send, MessageSquare, Award, DollarSign } from 'lucide-react';
 
 interface AdminPanelProps {
   tickets: Ticket[];
@@ -34,7 +34,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [pinInput, setPinInput] = useState('');
   
   // Tab State
-  const [activeSubTab, setActiveSubTab] = useState<'payments' | 'scores' | 'settings' | 'participants'>('payments');
+  const [activeSubTab, setActiveSubTab] = useState<'payments' | 'scores' | 'settings' | 'participants' | 'reports'>('payments');
+  const [reportJornada, setReportJornada] = useState<number | 'all'>('all');
+  const [copiedReport, setCopiedReport] = useState(false);
   const [dbParticipants, setDbParticipants] = useState<any[]>([]);
   const [loadingParticipants, setLoadingParticipants] = useState(false);
   
@@ -868,11 +870,88 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const pendingTickets = tickets.filter(t => t.payment_status === 'pending');
   const pendingQuinielas = registrations.filter(r => r.payment_status === 'pending');
 
+  // Helper to generate formatted WhatsApp report for jornadas
+  const generateWhatsAppReportText = (targetJornada: number | 'all') => {
+    const price = prices?.jornada_quiniela || 100;
+    const allJornadas = Array.from(new Set(matches.map(m => m.jornada))).sort((a, b) => a - b);
+    
+    const jornadasToProcess = targetJornada === 'all' 
+      ? allJornadas 
+      : [targetJornada];
+
+    let text = `🏆 *REPORTE DE RESULTADOS - QUINIELA LIGA MX* ⚽\n`;
+    text += `----------------------------------------\n`;
+
+    let totalGrandPrize = 0;
+    let totalClosedCount = 0;
+
+    jornadasToProcess.forEach(j => {
+      const jMatches = matches.filter(m => m.jornada === j);
+      const isClosed = jMatches.length > 0 && jMatches.every(m => m.status === 'finished');
+      const jRegs = registrations.filter(r => r.jornada === j && r.payment_status === 'confirmed');
+      const totalPool = jRegs.length * price;
+
+      text += `\n📌 *JORNADA ${j}* ${isClosed ? '✅ (Finalizada)' : '⏳ (En Curso)'}\n`;
+      text += `👥 Participantes: ${jRegs.length} | 💵 Bolsa Total: $${totalPool.toLocaleString('es-MX')} MXN\n`;
+
+      if (jRegs.length === 0) {
+        text += `   • *Sin quinielas confirmadas en esta jornada*\n`;
+        return;
+      }
+
+      const maxPoints = Math.max(...jRegs.map(r => r.points), 0);
+      const winners = jRegs.filter(r => r.points === maxPoints && maxPoints > 0);
+
+      if (winners.length === 0) {
+        text += `   • *Sin ganadores registrados aún*\n`;
+      } else if (winners.length === 1) {
+        const w = winners[0];
+        const wName = w.participants?.name || (w as any).name || 'Invitado';
+        text += `🥇 *Ganador:* ${wName} (${maxPoints} aciertos)\n`;
+        text += `💰 *Premio Ganado:* $${totalPool.toLocaleString('es-MX')} MXN\n`;
+        if (isClosed) {
+          totalGrandPrize += totalPool;
+          totalClosedCount++;
+        }
+      } else {
+        const prizePerWinner = Math.floor(totalPool / winners.length);
+        text += `🥇 *Ganadores (Empate con ${maxPoints} aciertos):*\n`;
+        winners.forEach(w => {
+          const wName = w.participants?.name || (w as any).name || 'Invitado';
+          text += `   • ${wName} ➡️ *$${prizePerWinner.toLocaleString('es-MX')} MXN*\n`;
+        });
+        if (isClosed) {
+          totalGrandPrize += totalPool;
+          totalClosedCount++;
+        }
+      }
+    });
+
+    text += `\n----------------------------------------\n`;
+    if (targetJornada === 'all') {
+      text += `💵 *TOTAL REPARTIDO:* $${totalGrandPrize.toLocaleString('es-MX')} MXN (${totalClosedCount} jornadas cerradas)\n`;
+    }
+    text += `¡Felicidades a los ganadores! 🎉⚽🔥`;
+
+    return text;
+  };
+
+  const handleCopyReport = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedReport(true);
+    setTimeout(() => setCopiedReport(false), 2500);
+  };
+
+  const handleSendWhatsApp = (text: string) => {
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', padding: '10px 0' }}>
       
       {/* Sub Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-glass)', gap: '10px' }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-glass)', gap: '10px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveSubTab('payments')}
           style={{
@@ -902,6 +981,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           }}
         >
           ⚽ Registrar Resultados ({matches.filter(m => m.status === 'pending').length} pendientes)
+        </button>
+        <button
+          onClick={() => setActiveSubTab('reports')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeSubTab === 'reports' ? '3px solid var(--primary)' : '3px solid transparent',
+            color: activeSubTab === 'reports' ? '#fff' : 'var(--text-secondary)',
+            padding: '12px 20px',
+            fontSize: '16px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
+        >
+          📢 Reportes WhatsApp
         </button>
         <button
           onClick={() => setActiveSubTab('settings')}
@@ -1168,19 +1262,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {activeSubTab === 'scores' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           
-          {/* Jornada Selector */}
-          <div className="glass-panel" style={{ padding: '15px 20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Calendar size={18} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Filtrar por Jornada:</span>
-            <select 
-              value={selectedJornada} 
-              onChange={(e) => setSelectedJornada(Number(e.target.value))}
-              style={{ width: '130px', padding: '6px 12px' }}
+          {/* Jornada Selector & Quick Report */}
+          <div className="glass-panel" style={{ padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Calendar size={18} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '15px', color: 'var(--text-secondary)' }}>Filtrar por Jornada:</span>
+              <select 
+                value={selectedJornada} 
+                onChange={(e) => setSelectedJornada(Number(e.target.value))}
+                style={{ width: '130px', padding: '6px 12px' }}
+              >
+                {Array.from(new Set(matches.map(m => m.jornada))).sort((a, b) => a - b).map(num => (
+                  <option key={num} value={num}>Jornada {num}</option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              onClick={() => {
+                setReportJornada(selectedJornada);
+                setActiveSubTab('reports');
+              }}
+              style={{
+                padding: '8px 16px',
+                background: 'rgba(37, 211, 102, 0.15)',
+                color: '#25D366',
+                border: '1px solid rgba(37, 211, 102, 0.3)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                <option key={num} value={num}>Jornada {num}</option>
-              ))}
-            </select>
+              <MessageSquare size={16} /> 📢 Generar Reporte WhatsApp (J{selectedJornada})
+            </button>
           </div>
 
           <div className="glass-panel" style={{ padding: '24px' }}>
@@ -1718,6 +1836,283 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
         </div>
       )}
+
+      {/* SUB-VIEW: WHATSAPP REPORTS */}
+      {activeSubTab === 'reports' && (() => {
+        const reportText = generateWhatsAppReportText(reportJornada);
+        const price = prices?.jornada_quiniela || 100;
+        const availableJornadas = Array.from(new Set(matches.map(m => m.jornada))).sort((a, b) => a - b);
+        
+        // Calculate totals across closed jornadas
+        let grandTotalDistributed = 0;
+        let closedCount = 0;
+        
+        availableJornadas.forEach(j => {
+          const jMatches = matches.filter(m => m.jornada === j);
+          const isClosed = jMatches.length > 0 && jMatches.every(m => m.status === 'finished');
+          if (isClosed) {
+            closedCount++;
+            const jRegs = registrations.filter(r => r.jornada === j && r.payment_status === 'confirmed');
+            grandTotalDistributed += jRegs.length * price;
+          }
+        });
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            {/* Header & Controls */}
+            <div className="glass-panel-glow" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h3 style={{ fontSize: '22px', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <MessageSquare style={{ color: '#25D366' }} size={26} /> Reportes de Resultados para WhatsApp
+                  </h3>
+                  <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>
+                    Genera el reporte oficial de ganadores y premios repartidos ($MXN) por jornada o el acumulado consolidado para enviar por WhatsApp.
+                  </p>
+                </div>
+
+                {/* Quick Action Buttons */}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => handleCopyReport(reportText)}
+                    style={{
+                      padding: '10px 18px',
+                      background: copiedReport ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                      color: copiedReport ? 'var(--primary)' : '#fff',
+                      border: copiedReport ? '1px solid var(--primary)' : '1px solid var(--border-glass)',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {copiedReport ? <Check size={18} /> : <Copy size={18} />}
+                    {copiedReport ? '¡Copiado al portapapeles!' : 'Copiar Texto'}
+                  </button>
+
+                  <button
+                    onClick={() => handleSendWhatsApp(reportText)}
+                    style={{
+                      padding: '10px 20px',
+                      background: '#25D366',
+                      color: '#000',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px',
+                      transition: 'transform 0.15s, background 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#20bd5a'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#25D366'}
+                  >
+                    <Send size={18} /> Enviar por WhatsApp
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector / Filter Bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--border-glass)' }}>
+                <span style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: '600' }}>Seleccionar Vista de Reporte:</span>
+                <select
+                  value={reportJornada}
+                  onChange={(e) => setReportJornada(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                  style={{
+                    padding: '8px 14px',
+                    borderRadius: '8px',
+                    background: '#181824',
+                    color: '#fff',
+                    border: '1px solid var(--border-glass)',
+                    fontSize: '14px',
+                    minWidth: '260px'
+                  }}
+                >
+                  <option value="all">📊 Consolidado General (Todas las Jornadas)</option>
+                  {availableJornadas.map(j => {
+                    const jMatches = matches.filter(m => m.jornada === j);
+                    const isClosed = jMatches.length > 0 && jMatches.every(m => m.status === 'finished');
+                    return (
+                      <option key={j} value={j}>
+                        Jornada {j} {isClosed ? '✅ (Finalizada)' : '⏳ (En Curso)'}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            </div>
+
+            {/* Metrics Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px' }}>
+              <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  <Award size={30} style={{ color: 'var(--primary)' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Jornadas Cerradas</p>
+                  <h3 style={{ fontSize: '24px', color: '#fff', margin: '2px 0 0 0', fontWeight: '700' }}>
+                    {closedCount} de {availableJornadas.length}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ background: 'rgba(251, 191, 36, 0.1)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
+                  <DollarSign size={30} style={{ color: '#fbbf24' }} />
+                </div>
+                <div>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Total Repartido en Premios</p>
+                  <h3 style={{ fontSize: '24px', color: '#fbbf24', margin: '2px 0 0 0', fontWeight: '700' }}>
+                    ${grandTotalDistributed.toLocaleString('es-MX')} MXN
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* Report Content Grid: Preview & Breakdown */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+              
+              {/* WhatsApp Message Live Preview Box */}
+              <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <h4 style={{ fontSize: '16px', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MessageSquare size={18} style={{ color: '#25D366' }} /> Vista Previa del Mensaje (WhatsApp)
+                </h4>
+                
+                <textarea
+                  readOnly
+                  value={reportText}
+                  rows={14}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '10px',
+                    background: '#0d0d14',
+                    border: '1px solid var(--border-glass)',
+                    color: '#e2e8f0',
+                    fontFamily: 'monospace',
+                    fontSize: '13px',
+                    lineHeight: '1.6',
+                    resize: 'vertical'
+                  }}
+                />
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button
+                    onClick={() => handleCopyReport(reportText)}
+                    className="btn-secondary"
+                    style={{ padding: '8px 16px', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Copy size={15} /> Copiar
+                  </button>
+                  <button
+                    onClick={() => handleSendWhatsApp(reportText)}
+                    style={{ padding: '8px 16px', fontSize: '13px', background: '#25D366', color: '#000', fontWeight: '700', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Send size={15} /> Enviar a WhatsApp
+                  </button>
+                </div>
+              </div>
+
+              {/* Finished Jornadas Summary Table */}
+              <div className="glass-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <h4 style={{ fontSize: '16px', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Award size={18} style={{ color: 'var(--primary)' }} /> Desglose de Ganadores por Jornada
+                </h4>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border-glass)', color: 'var(--text-secondary)' }}>
+                        <th style={{ padding: '10px 8px' }}>Jornada</th>
+                        <th style={{ padding: '10px 8px' }}>Estado</th>
+                        <th style={{ padding: '10px 8px' }}>Ganador(es)</th>
+                        <th style={{ padding: '10px 8px', textAlign: 'right' }}>Premio MXN</th>
+                        <th style={{ padding: '10px 8px', textAlign: 'center' }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {availableJornadas.map(j => {
+                        const jMatches = matches.filter(m => m.jornada === j);
+                        const isClosed = jMatches.length > 0 && jMatches.every(m => m.status === 'finished');
+                        const jRegs = registrations.filter(r => r.jornada === j && r.payment_status === 'confirmed');
+                        const totalPool = jRegs.length * price;
+                        const maxPoints = jRegs.length > 0 ? Math.max(...jRegs.map(r => r.points), 0) : 0;
+                        const winners = jRegs.filter(r => r.points === maxPoints && maxPoints > 0);
+
+                        return (
+                          <tr key={j} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: '700', color: '#fff' }}>
+                              Jornada {j}
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: '10px',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                background: isClosed ? 'rgba(16,185,129,0.15)' : 'rgba(251,191,36,0.15)',
+                                color: isClosed ? 'var(--primary)' : '#fbbf24'
+                              }}>
+                                {isClosed ? 'Finalizada' : 'En Curso'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 8px', color: '#fff' }}>
+                              {winners.length > 0 ? (
+                                winners.map((w, idx) => (
+                                  <div key={idx} style={{ fontSize: '13px' }}>
+                                    • {w.participants?.name || (w as any).name || 'Invitado'} ({maxPoints} pts)
+                                  </div>
+                                ))
+                              ) : (
+                                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Sin ganadores</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: '700', color: '#fbbf24' }}>
+                              ${totalPool.toLocaleString('es-MX')} MXN
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <button
+                                onClick={() => {
+                                  setReportJornada(j);
+                                  const textForJ = generateWhatsAppReportText(j);
+                                  handleSendWhatsApp(textForJ);
+                                }}
+                                style={{
+                                  padding: '4px 10px',
+                                  background: 'rgba(37, 211, 102, 0.15)',
+                                  color: '#25D366',
+                                  border: '1px solid rgba(37, 211, 102, 0.3)',
+                                  borderRadius: '6px',
+                                  fontSize: '12px',
+                                  fontWeight: '600',
+                                  cursor: 'pointer'
+                                }}
+                                title="Enviar reporte de esta jornada a WhatsApp"
+                              >
+                                📱 Enviar
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+        );
+      })()}
+
 
       {/* Transcription Modal */}
       {activeTranscriptionReg && (
