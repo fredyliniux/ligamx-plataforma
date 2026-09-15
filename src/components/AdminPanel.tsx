@@ -872,7 +872,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // Helper to generate formatted WhatsApp report for jornadas
   const generateWhatsAppReportText = (targetJornada: number | 'all') => {
-    const price = prices?.jornada_quiniela || 100;
+    const price = (prices as any)?.quiniela || prices?.jornada_quiniela || 100;
     const allJornadas = Array.from(new Set(matches.map(m => m.jornada))).sort((a, b) => a - b);
     
     const jornadasToProcess = targetJornada === 'all' 
@@ -892,7 +892,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const totalPool = jRegs.length * price;
 
       text += `\n📌 *JORNADA ${j}* ${isClosed ? '✅ (Finalizada)' : '⏳ (En Curso)'}\n`;
-      text += `👥 Participantes: ${jRegs.length} | 💵 Bolsa Total: $${totalPool.toLocaleString('es-MX')} MXN\n`;
+      text += `👥 Participantes: ${jRegs.length} | 💵 Bolsa de la Semana: $${totalPool.toLocaleString('es-MX')} MXN\n`;
 
       if (jRegs.length === 0) {
         text += `   • *Sin quinielas confirmadas en esta jornada*\n`;
@@ -929,7 +929,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
     text += `\n----------------------------------------\n`;
     if (targetJornada === 'all') {
-      text += `💵 *TOTAL REPARTIDO:* $${totalGrandPrize.toLocaleString('es-MX')} MXN (${totalClosedCount} jornadas cerradas)\n`;
+      text += `💵 *TOTAL GLOBAL REPARTIDO (ACUMULADO):* $${totalGrandPrize.toLocaleString('es-MX')} MXN (${totalClosedCount} jornadas finalizadas)\n`;
     }
     text += `¡Felicidades a los ganadores! 🎉⚽🔥`;
 
@@ -1840,22 +1840,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* SUB-VIEW: WHATSAPP REPORTS */}
       {activeSubTab === 'reports' && (() => {
         const reportText = generateWhatsAppReportText(reportJornada);
-        const price = prices?.jornada_quiniela || 100;
+        const price = (prices as any)?.quiniela || prices?.jornada_quiniela || 100;
         const availableJornadas = Array.from(new Set(matches.map(m => m.jornada))).sort((a, b) => a - b);
         
-        // Calculate totals across closed jornadas
-        let grandTotalDistributed = 0;
+        let displayedPrize = 0;
         let closedCount = 0;
         
-        availableJornadas.forEach(j => {
-          const jMatches = matches.filter(m => m.jornada === j);
-          const isClosed = jMatches.length > 0 && jMatches.every(m => m.status === 'finished');
-          if (isClosed) {
-            closedCount++;
-            const jRegs = registrations.filter(r => r.jornada === j && r.payment_status === 'confirmed');
-            grandTotalDistributed += jRegs.length * price;
+        if (reportJornada === 'all') {
+          availableJornadas.forEach(j => {
+            const jMatches = matches.filter(m => m.jornada === j);
+            const isClosed = jMatches.length > 0 && jMatches.every(m => m.status === 'finished');
+            if (isClosed) {
+              closedCount++;
+              const jRegs = registrations.filter(r => r.jornada === j && r.payment_status === 'confirmed');
+              displayedPrize += jRegs.length * price;
+            }
+          });
+        } else {
+          const jRegs = registrations.filter(r => r.jornada === reportJornada && r.payment_status === 'confirmed');
+          displayedPrize = jRegs.length * price;
+          const jMatches = matches.filter(m => m.jornada === reportJornada);
+          if (jMatches.length > 0 && jMatches.every(m => m.status === 'finished')) {
+            closedCount = 1;
           }
-        });
+        }
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -1956,9 +1964,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <Award size={30} style={{ color: 'var(--primary)' }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Jornadas Cerradas</p>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>
+                    {reportJornada === 'all' ? 'Jornadas Cerradas' : `Estado Jornada ${reportJornada}`}
+                  </p>
                   <h3 style={{ fontSize: '24px', color: '#fff', margin: '2px 0 0 0', fontWeight: '700' }}>
-                    {closedCount} de {availableJornadas.length}
+                    {reportJornada === 'all' ? `${closedCount} de ${availableJornadas.length}` : (closedCount === 1 ? 'Finalizada' : 'En Curso')}
                   </h3>
                 </div>
               </div>
@@ -1968,9 +1978,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <DollarSign size={30} style={{ color: '#fbbf24' }} />
                 </div>
                 <div>
-                  <p style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Total Repartido en Premios</p>
+                  <p style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>
+                    {reportJornada === 'all' ? 'Total Acumulado Repartido' : `Bolsa Jornada ${reportJornada}`}
+                  </p>
                   <h3 style={{ fontSize: '24px', color: '#fbbf24', margin: '2px 0 0 0', fontWeight: '700' }}>
-                    ${grandTotalDistributed.toLocaleString('es-MX')} MXN
+                    ${displayedPrize.toLocaleString('es-MX')} MXN
                   </h3>
                 </div>
               </div>
